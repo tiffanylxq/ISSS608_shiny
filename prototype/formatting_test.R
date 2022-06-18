@@ -74,94 +74,90 @@ ui <- navbarPage(
   tabPanel("Introduction"),
   navbarMenu("Part1"),
   navbarMenu("Income and Expense",
-             tabPanel("TEST",
-               titlePanel("TEST"),
-             sidebarLayout(position = "left",
-                           sidebarPanel(),
-                           mainPanel()
-             )),
              tabPanel("Income and Expense",
                       # Input values
-                      sidebarPanel(
-                        HTML("<h3>Input General Parameters</h3>"),
-                        HTML("<p>This frames the datasets for both individual and population to make the comparison easier</p>"),
-                        
-                        HTML("<b>Choose Dates</b>"),
-                        dateRangeInput("datee", "Date range:",
-                                       start = "2022-03-01",
-                                       end   = "2023-05-24", 
-                                       min = "2022-03-01",
-                                       max = "2023-05-24"), 
-                        
-                        # We use this to select the date division
-                        HTML("<b>Choose Date Division</b>"),
-                        #checkboxInput("dateDivCheck", label = "Use a different date division", value = FALSE),
-                        selectInput("divisionn", label = "Division:", 
-                                    choices = list("Daily" = "daily", 
-                                                   "Monthly" = "monthly", 
-                                                   "Yearly" = "yearly")),
-                        
-                        HTML("<h3>Input Population Parameters</h3>"),
-                        HTML("<p>Use this to understand the population of Engagement</p>"),
-                        HTML("<p>Note that the ranges are in percentage.</p>"),
-                        HTML("<p>Eg. Setting the income range to 90-100 will give you the top 10% of income-earners 
+                      sidebarLayout(
+                        sidebarPanel(
+                          HTML("<h3>Input General Parameters</h3>"),
+                          HTML("<p>This frames the datasets for both individual and population to make the comparison easier</p>"),
+                          
+                          HTML("<b>Choose Dates</b>"),
+                          dateRangeInput("datee", "Date range:",
+                                         start = "2022-03-01",
+                                         end   = "2023-05-24", 
+                                         min = "2022-03-01",
+                                         max = "2023-05-24"), 
+                          
+                          # We use this to select the date division
+                          HTML("<b>Choose Date Division</b>"),
+                          #checkboxInput("dateDivCheck", label = "Use a different date division", value = FALSE),
+                          selectInput("divisionn", label = "Division:", 
+                                      choices = list("Daily" = "daily", 
+                                                     "Monthly" = "monthly", 
+                                                     "Yearly" = "yearly")),
+                          
+                          HTML("<h3>Input Population Parameters</h3>"),
+                          HTML("<p>Use this to understand the population of Engagement</p>"),
+                          HTML("<p>Note that the ranges are in percentage.</p>"),
+                          HTML("<p>Eg. Setting the income range to 90-100 will give you the top 10% of income-earners 
                                            in Engagement. </p>"),
+                          
+                          # We allow the user to decide whether they'd like to explore Income, Expense, 
+                          # and what type of Expense they will like to explore
+                          
+                          # We use this to select a preliminary level of aggregation
+                          HTML("<b>Choose Aggregation</b>"),
+                          selectInput("aggregation", label = "Aggregation:", 
+                                      choices = list("Maximum" = "maximum", 
+                                                     "Average" = "average", 
+                                                     "Minimum" = "minimum", 
+                                                     "Total" = "total")),
+                          
+                          # Choose Parameters
+                          HTML("<b>Choose Paramaters</b>"),
+                          checkboxInput("incomeCheck", label = "Evaluate income", value = TRUE),
+                          checkboxInput("allExpenseCheck", label = "Evaluate all expense", value = TRUE),
+                          checkboxInput("educationExpenseCheck", label = "Evaluate education expense", value = FALSE),
+                          checkboxInput("foodExpenseCheck", label = "Evaluate food expense", value = FALSE),
+                          checkboxInput("recreationExpenseCheck", label = "Evaluate recreation expense", value = FALSE),
+                          checkboxInput("shelterExpenseCheck", label = "Evaluate shelter expense", value = FALSE),
+                          checkboxInput("rentAdjustmentExpenseCheck", 
+                                        label = "Evaluate rent adjustment expense", value = FALSE),
+                          checkboxInput("balanceCheck", label = "Evaluate balance", value = TRUE),
+                          
+                          
+                          HTML("<h3>Input Participants Parameters</h3>"),
+                          HTML("<p>Use this to understand one participant from Engagement</p>"),
+                          
+                          numericInput("participantt", 
+                                       label = "Participant Number", 
+                                       value = 0),
+                          
+                          # Choose Parameters
+                          HTML("<b>Choose Paramaters</b>"),
+                          checkboxInput("incomeCheckParticipant", label = "Evaluate income", value = TRUE),
+                          checkboxInput("allExpenseCheckParticipant", label = "Evaluate all expense", value = TRUE),
+                          checkboxInput("educationExpenseCheckParticipant", label = "Evaluate education expense", value = FALSE),
+                          checkboxInput("foodExpenseCheckParticipant", label = "Evaluate food expense", value = FALSE),
+                          checkboxInput("recreationExpenseCheckParticipant", label = "Evaluate recreation expense", value = FALSE),
+                          checkboxInput("shelterExpenseCheckParticipant", label = "Evaluate shelter expense", value = FALSE),
+                          checkboxInput("rentAdjustmentExpenseCheckParticipant", 
+                                        label = "Evaluate rent adjustment expense", value = FALSE),
+                          checkboxInput("balanceCheckParticipant", label = "Evaluate balance", value = TRUE),
+                          
+                        ),
                         
-                        # We allow the user to decide whether they'd like to explore Income, Expense, 
-                        # and what type of Expense they will like to explore
-                        
-                        # We use this to select a preliminary level of aggregation
-                        HTML("<b>Choose Aggregation</b>"),
-                        selectInput("aggregation", label = "Aggregation:", 
-                                    choices = list("Maximum" = "maximum", 
-                                                   "Average" = "average", 
-                                                   "Minimum" = "minimum", 
-                                                   "Total" = "total")),
-                        
-                        # Choose Parameters
-                        HTML("<b>Choose Paramaters</b>"),
-                        checkboxInput("incomeCheck", label = "Evaluate income", value = TRUE),
-                        checkboxInput("allExpenseCheck", label = "Evaluate all expense", value = TRUE),
-                        checkboxInput("educationExpenseCheck", label = "Evaluate education expense", value = FALSE),
-                        checkboxInput("foodExpenseCheck", label = "Evaluate food expense", value = FALSE),
-                        checkboxInput("recreationExpenseCheck", label = "Evaluate recreation expense", value = FALSE),
-                        checkboxInput("shelterExpenseCheck", label = "Evaluate shelter expense", value = FALSE),
-                        checkboxInput("rentAdjustmentExpenseCheck", 
-                                      label = "Evaluate rent adjustment expense", value = FALSE),
-                        checkboxInput("balanceCheck", label = "Evaluate balance", value = TRUE),
-                        
-                        
-                        HTML("<h3>Input Participants Parameters</h3>"),
-                        HTML("<p>Use this to understand one participant from Engagement</p>"),
-                        
-                        numericInput("participantt", 
-                                     label = "Participant Number", 
-                                     value = 0),
-                        
-                        # Choose Parameters
-                        HTML("<b>Choose Paramaters</b>"),
-                        checkboxInput("incomeCheckParticipant", label = "Evaluate income", value = TRUE),
-                        checkboxInput("allExpenseCheckParticipant", label = "Evaluate all expense", value = TRUE),
-                        checkboxInput("educationExpenseCheckParticipant", label = "Evaluate education expense", value = FALSE),
-                        checkboxInput("foodExpenseCheckParticipant", label = "Evaluate food expense", value = FALSE),
-                        checkboxInput("recreationExpenseCheckParticipant", label = "Evaluate recreation expense", value = FALSE),
-                        checkboxInput("shelterExpenseCheckParticipant", label = "Evaluate shelter expense", value = FALSE),
-                        checkboxInput("rentAdjustmentExpenseCheckParticipant", 
-                                      label = "Evaluate rent adjustment expense", value = FALSE),
-                        checkboxInput("balanceCheckParticipant", label = "Evaluate balance", value = TRUE),
-                        
-                      ),
-                      
-                      mainPanel(
-                        HTML("<h3>Engagement Statistics</h3>"),
-                        plotlyOutput("plot1ks"),
-                        plotlyOutput("plot1ksa"),
-                        
-                        HTML("<h3>Individual Statistics</h3>"),
-                        plotlyOutput("plot2ks"),
-                        plotlyOutput("plot2ksa")
+                        mainPanel(
+                          tabsetPanel(
+                            tabPanel(
+                              fluidRow(
+                                column(6, plotOutput("plot1ks")), 
+                                column(6, plotOutput("plot2ks"))
+                              )
+                            )
+                          )
+                        )
                       )
-                      
              ), #tabPanel(), Home
              
              tabPanel("Patterns with Heatmap", 
