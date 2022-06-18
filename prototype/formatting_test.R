@@ -74,6 +74,12 @@ ui <- navbarPage(
   tabPanel("Introduction"),
   navbarMenu("Part1"),
   navbarMenu("Income and Expense",
+             tabPanel("TEST",
+               titlePanel("TEST"),
+             sidebarLayout(position = "left",
+                           sidebarPanel(),
+                           mainPanel()
+             )),
              tabPanel("Income and Expense",
                       # Input values
                       sidebarPanel(
