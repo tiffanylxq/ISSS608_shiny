@@ -1,5 +1,11 @@
 library(shiny)
 library(bslib)
+library(tidyverse)
+library(plotly)
+library(tmap)
+library(sf)
+library(trelliscopejs)
+
 
 packages = c('tidyverse','plotly', 'tmap', 'sf','trelliscopejs')
 
