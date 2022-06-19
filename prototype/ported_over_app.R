@@ -15,12 +15,29 @@ library(reshape)
 library(reshape2)
 library(scales)
 library(hrbrthemes)
+library(ggstatsplot)
+library(RColorBrewer)
+library(sftime)
 
 #========================#
 #####Data Extraction######
 #========================#
 
 ##### Part1 #####
+sales <- read_rds("data/sales.rds")
+pubs <- read_sf("data/Pubs.csv", options = "GEOM_POSSIBLE_NAMES=location")
+restaurants <- read_sf("data/Restaurants.csv", options = "GEOM_POSSIBLE_NAMES=location")
+
+pubs <- pubs %>%
+  dplyr::rename(venueId = pubId) %>%
+  select(venueId, maxOccupancy, location, buildingId)
+
+restaurants <- restaurants %>%
+  dplyr::rename(venueId = restaurantId) %>%
+  select(venueId, maxOccupancy, location, buildingId)
+
+pubs_resto <- rbind(pubs, restaurants)
+pubs_resto_v <- left_join(pubs_resto, sales, by = 'venueId')
 
 ##### Part2 #####
 participantData <- read_csv("data/facet/Participants.csv")
@@ -73,7 +90,40 @@ ui <- navbarPage(
   theme=shinytheme("flatly"),
   id = "navbarID",
   tabPanel("Introduction"),
-  navbarMenu("Part1"),
+  navbarMenu("Business Performance",
+             tabPanel("Pubs & Restaurants",
+                      sidebarPanel(
+                        radioButtons(inputId = "hBusiness_type",
+                                     label = "Category",
+                                     choices = c("Pubs" = "Recreation (Social Gathering)",
+                                                 "Restaurants" = "Eating"),
+                                     selected = "Recreation (Social Gathering)"),
+                        sliderInput(inputId = "hNumber",
+                                    label = "Select n>0 to view top performing businesses.
+                           Select n<0 to view worse performing businesses",
+                                    min = -10,
+                                    max = 10,
+                                    value = 5),
+                        # selectInput(inputId = "Case",
+                        #             label = "Scenario",
+                        #             choices = list("Top 5" = 5,
+                        #                            "Top 10" = 10,
+                        #                            "Bottom 5" = -5)),
+                        dateRangeInput(inputId = "hDate",
+                                       label = "Select Date Range:",
+                                       start = "2022-03-01",
+                                       end = "2023-03-01"),
+                        selectInput(inputId = "hBusinessID",
+                                    label = "VenueID",
+                                    "venueID")),
+                      mainPanel(
+                         plotlyOutput("hplot1"),
+                         plotlyOutput("hplot2"),
+                        # plotlyOutput("hplot3"),
+                        # plotlyOutput("hplot4"),
+                        # tmapOutput("hplot5"),
+                        ))
+             ),
   navbarMenu("Income and Expense",
              tabPanel("Income and Expense",
                       # Input values
@@ -1583,6 +1633,44 @@ server <- function (input, output, session) {
     
     number_of_participants <- sum(joviality_df >= start & joviality_df <= end)
     
+  })
+  
+  ##### Pubs & Restaurants #####
+  
+  data1 <- reactive({
+    req(input$hBusiness_type)
+    df <- sales %>% filter(purpose %in% input$hBusiness_type) %>%
+      filter(date_in >= input$hDate[1] & date_in <= input$hDate[2]) %>%
+      group_by(venueId) %>% summarise(total_sales = sum(spend)) %>%
+      top_n(input$hNumber)
+  })
+  
+  output$hplot1 <- renderPlotly({
+    p <- ggplot(data1(),
+                aes(x=reorder(venueId, - total_sales), y= total_sales, fill=venueId)) +
+      geom_bar(stat = "identity") +
+      labs(x = "Business ID" , y = "Total Sales", 
+           title = "Top Overall Performing Business")
+    ggplotly(p)
+  })
+  
+  data2 <- reactive({
+    req(input$hBusiness_type)
+    df <- sales %>% 
+      filter(venueId %in% data1()$venueId) %>% 
+      filter(date_in >= input$hDate[1] & date_in < input$hDate[2]) %>%
+      mutate(YearMonth = format(as.Date(date_in), "%Y-%m")) %>%
+      group_by(venueId, YearMonth) %>% 
+      summarise(monthly_sales = sum(spend))
+  })
+  
+  output$hplot2 <- renderPlotly({
+    p <- ggplot(data2(),
+                aes(x=YearMonth, y= monthly_sales, group=venueId)) +
+      geom_line(aes(color=venueId)) + 
+      labs(x = "Year-Month" , y = "Total Monthly Sales", 
+           title = "Monthly Sales")
+    ggplotly(p)
   })
   
 }
