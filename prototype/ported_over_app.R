@@ -18,6 +18,8 @@ library(hrbrthemes)
 library(ggstatsplot)
 library(RColorBrewer)
 library(sftime)
+library(ggthemes)
+library(FunnelPlotR)
 
 #========================#
 #####Data Extraction######
@@ -98,9 +100,11 @@ ui <- navbarPage(
                                      choices = c("Pubs" = "Recreation (Social Gathering)",
                                                  "Restaurants" = "Eating"),
                                      selected = "Recreation (Social Gathering)"),
+                        
+                        HTML("<p>To view top n businesses, select n > 0.</p>"),
+                        HTML("<p>To view bottom n businesses, select n < 0.</p>"),
                         sliderInput(inputId = "hNumber",
-                                    label = "Select n>0 to view top performing businesses.
-                           Select n<0 to view worse performing businesses",
+                                    label = "Scenario",
                                     min = -10,
                                     max = 10,
                                     value = 5),
@@ -108,22 +112,37 @@ ui <- navbarPage(
                         #             label = "Scenario",
                         #             choices = list("Top 5" = 5,
                         #                            "Top 10" = 10,
-                        #                            "Bottom 5" = -5)),
+                        #                            "Bottom 5" = -5,
+                        #                            "Bottom 10" = -10)),
+                        
                         dateRangeInput(inputId = "hDate",
                                        label = "Select Date Range:",
                                        start = "2022-03-01",
                                        end = "2023-03-01"),
+                        
+                        HTML("<p>To deep dive on the weekday sales pattern, select a venueID.</p>"),
                         selectInput(inputId = "hBusinessID",
                                     label = "VenueID",
                                     "venueID")),
+                      
                       mainPanel(
+                        splitLayout(
                          plotlyOutput("hplot1"),
-                         plotlyOutput("hplot2"),
-                        # plotlyOutput("hplot3"),
-                        # plotlyOutput("hplot4"),
-                        # tmapOutput("hplot5"),
-                        ))
+                         plotlyOutput("hplot2")),
+                        
+                        HTML("<h3>Total Sales by venueId</h3>"),
+                        splitLayout(
+                          tmapOutput("hplot5"),
+                          plotOutput("hplot6")),
+                        
+                        splitLayout(
+                         plotlyOutput("hplot3"),
+                         plotlyOutput("hplot4")),
+
+                        )),
+             tabPanel("Workplaces")
              ),
+  
   navbarMenu("Income and Expense",
              tabPanel("Income and Expense",
                       # Input values
@@ -1673,6 +1692,117 @@ server <- function (input, output, session) {
     ggplotly(p)
   })
   
+  ### to list down the venue dynamically for hplot3 and hplot4 ###
+  observe({
+    updateSelectInput(session, "hBusinessID", choices = unique(sales$venueId))
+  })
+  
+  data3 <- reactive({
+    req(input$hBusinessID)
+    df <- sales %>%
+      filter(venueId %in% input$hBusinessID) %>%
+      filter(date_in >= input$hDate[1] & date_in < input$hDate[2]) %>%
+      group_by(venueId, date_in, wday_in) %>%
+      summarise(daily_sales = sum(spend)) %>%
+      ungroup()
+  })
+  
+  output$hplot3 <- renderPlotly({
+    # d <- event_data("plotly_click")
+    # if(is.null(d)) return(NULL)
+    p <- ggbetweenstats(data = data3(), 
+                        x = wday_in, 
+                        y = daily_sales, 
+                        type = "p", 
+                        mean.ci = TRUE, 
+                        pairwise.comparisons = TRUE, 
+                        pairwise.display = "s",
+                        p.adjust.method = "fdr",
+                        messages = FALSE,
+                        title = "Distribution of Weekday Sales",
+                        xlab = "Weekday",
+                        ylab = "Daily Sales Amount",
+                        centrality.point.args = list(size  = 2, color = "darkred"),
+                        #centrality.label.args = list(size  = 5, color = "red"),
+                        package = "RColorBrewer",
+                        palette = "Set2")
+    ggplotly(p)
+  })
+  
+  data4 <- reactive({
+    req(input$hBusinessID)
+    df <- sales %>%
+      filter(venueId %in% input$hBusinessID) %>%
+      filter(date_in >= input$hDate[1] & date_in < input$hDate[2]) %>%
+      group_by(venueId, date_in, wday_in, time_in) %>% 
+      summarise(customers_check_in = n()) %>%
+      group_by(venueId, wday_in, time_in) %>%
+      summarise(ave_checkin = mean(customers_check_in)) %>% na.omit
+  })
+  
+  output$hplot4 <- renderPlotly({
+    p <-  ggplot(data4(), aes(time_in, wday_in, fill = ave_checkin)) + 
+      geom_tile(color = "white", size = 0.5) + 
+      theme_tufte(base_family = "Helvetica") + 
+      coord_equal() +
+      scale_fill_gradient(name = "# of customers",
+                          low = "sky blue", 
+                          high = "dark blue") +
+      #facet_wrap(~venueId, ncol = 1) +
+      labs(x = NULL, y = NULL, 
+           title = "Average Check in by weekday and time of the day") +
+      theme(axis.ticks = element_blank(),
+            axis.text.x = element_text(size = 7),
+            plot.title = element_text(hjust = 0.5),
+            legend.title = element_text(size = 8),
+            legend.text = element_text(size = 6) )
+    ggplotly(p)
+  })
+  
+  data5 <- reactive({
+    req(input$hBusinessID)
+    df <- pubs_resto_v %>%
+      filter(venueId %in% data1()$venueId) %>%
+      filter(date_in >= input$hDate[1] & date_in < input$hDate[2]) %>%
+      group_by(venueId) %>%
+      summarise(total_sales = sum(spend))
+  })
+  
+  output$hplot5 <-renderTmap({
+    tm_shape(buildings)+
+      tm_polygons(col = "grey60",
+                  size = 2,
+                  border.col = "black",
+                  border.lwd = 1) +
+      tm_shape(data5()) +
+      tm_bubbles(col = "red",
+                 size = "total_sales",
+                 alpha = 0.3) +
+      tm_layout(bg.color="white",
+                main.title = "Total Sales by Businesses", 
+                main.title.position = "center")
+  })
+  
+  data6 <- reactive({
+    req(input$hBusinessID)
+    df <- pubs_resto_v %>%
+      filter(purpose %in% input$hBusiness_type) %>%
+      filter(date_in >= input$hDate[1] & date_in < input$hDate[2]) %>%
+      group_by(venueId) %>%
+      summarise(total_sales = sum(spend), visitors = n())
+  })
+  
+  output$hplot6 <- renderPlot({
+    funnel_plot(
+      numerator = data6()$total_sales,
+      denominator = data6()$visitors,
+      group = data6()$venueId,
+      y_range = c(10,25),
+      title = "Cumulative Sales by Cumulative Visitors",           
+      x_label = "Total Sales", 
+      y_label = "Total Visitors" 
+    )
+  })
 }
 
 shinyApp(ui, server)
