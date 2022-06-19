@@ -52,6 +52,7 @@ Count_Checkin_Monthly <- read_sf("data/Count_Checkin_Monthly.csv",
                                  options = "GEOM_POSSIBLE_NAMES=location")  
 Count_Checkin_Weekday <- read_sf("data/Count_Checkin_Weekday.csv", 
                                  options = "GEOM_POSSIBLE_NAMES=location") 
+
 Count_Checkin_Daily$Num_of_Employees <- as.numeric(Count_Checkin_Daily$Num_of_Employees)
 Count_Checkin_Weekly$Num_of_Employees <- as.numeric(Count_Checkin_Weekly$Num_of_Employees)
 Count_Checkin_Weekday$Num_of_Employees <- as.numeric(Count_Checkin_Weekday$Num_of_Employees)
@@ -148,12 +149,14 @@ ui <- navbarPage(
                       
                       mainPanel(
                         HTML("<h3>Engagement Statistics</h3>"),
-                        plotlyOutput("plot1ks"),
-                        plotlyOutput("plot1ksa"),
+                        splitLayout(
+                          plotlyOutput("plot1ks"),
+                          plotlyOutput("plot2ks")),
                         
                         HTML("<h3>Individual Statistics</h3>"),
-                        plotlyOutput("plot2ks"),
-                        plotlyOutput("plot2ksa")
+                        splitLayout(
+                          plotlyOutput("plot1ksa"),
+                          plotlyOutput("plot2ksa"))
                       )
                       
              ), #tabPanel(), Home
@@ -217,40 +220,50 @@ ui <- navbarPage(
                             HTML("<b>Choose range for joviality</b>"),
                             textInput("jovialityStart", label = "Start of joviality range:", value = "", width = NULL, placeholder = "Please enter number from 0 to 1."), 
                             textInput("jovialityEnd", label = "End of joviality range:", value = "", width = NULL, placeholder = "Please enter number from 0 to 1."), 
-                            
-                            
                           ), 
                           mainPanel(
-                            plotlyOutput(outputId = "plot4ks", height=400), 
-                            plotlyOutput(outputId = "plot5ks", height=400), 
-                            plotlyOutput(outputId = "plot6ks", height=400), 
-                            plotlyOutput(outputId = "plot7ks", height=400), 
-                            plotlyOutput(outputId = "plot8ks", height=400), 
-                            plotlyOutput(outputId = "plot9ks", height=400), 
+                            splitLayout(
+                              plotlyOutput(outputId = "plot4ks", height=400), 
+                              plotlyOutput(outputId = "plot5ks", height=400)),
+                            splitLayout(
+                              plotlyOutput(outputId = "plot6ks", height=400), 
+                              plotlyOutput(outputId = "plot7ks", height=400)), 
+                            splitLayout(
+                              plotlyOutput(outputId = "plot8ks", height=400), 
+                              plotlyOutput(outputId = "plot9ks", height=400)), 
                             HTML("<b>Number of participants that fall under range</b>"),
                             h3(textOutput("selected_var"))
                           )
              )),
+  
+
+                        
   navbarMenu("Employer",
-             tabPanel("Map View", fluidRow(
-               titlePanel("Interactive City Map View"),
+             tabPanel("Map View", 
+              sidebarPanel(
                selectInput("period", label = "Period", choices = c("Daily", "Weekly", "Weekday", "Monthly")),
                selectInput("employee", label = "Num of Employees", choices = c("--")),
                selectInput("job", label = "Num of Jobs", choices = c("--")),
                selectInput("hired", label = "Hired Rate", choices = c("--")),
                checkboxGroupInput("pay", label = "Pay Group", choices = c("")),
-               textInput("eid", label = "Employer Id", value = ""),  
+               textInput("eid", label = "Employer Id", value = "")),
+              mainPanel(
+                HTML("<h3>Interactive City Map View</h3>"),
                tmapOutput("plot1"),
                DT::dataTableOutput("aTable")
              )),
-             tabPanel("Hiring Rate", fluidPage(
-               trelliscopeOutput("HiringRate")
+             tabPanel("Hiring Rate", 
+              mainPanel(
+                HTML("<h3>Hiring Rate of Each Employer</h3>"),
+                trelliscopeOutput("HiringRate",width = "100%", height = "400px"),
+                plotOutput("test")
              )),
-             tabPanel("Turnover Rate", fluidRow(
-               splitLayout(
+             tabPanel("Turnover Rate", 
+              sidebarPanel(
                  selectInput("change_filter", label = "Filter by", choices = c("--", "Date", "Week", "Month")), 
                  selectInput("change_value", label = "Options", choices = c("--"))
                ), 
+              mainPanel(
                splitLayout( 
                  plotOutput("ChangeStaff"),
                  plotOutput("ChangeJob")
@@ -330,23 +343,25 @@ server <- function (input, output, session) {
   }) 
   
   #############   Employer - Hiring Rate  #########################
+  
   output$HiringRate <- renderTrelliscope({
     
-    ggplot(Count_Checkin_Weekly, aes(x= as.factor(Week_Num), y= HiredRate)) +
-      geom_point(color='red') +
-      labs(x= 'Week', y= 'HiredRate',
-           title = 'Hiring Rate of Each Employers') +
-      ylim(0,600) + 
+  r <- ggplot(Count_Checkin_Weekly, aes(x= as.factor(Week_Num), y= as.numeric(HiredRate))) +
+    geom_point(color='red') +
+    labs(x= 'Week', y= 'HiredRate',
+         title = 'Hiring Rate of Each Employers') +
+    ylim(0,600) +
       facet_trelliscope(~ employerId, 
                         nrow = 2, ncol = 3, width = 800,
-                        path = 'trellisr/',
-                        self_contained = TRUE) +
+                       path = 'trellisr',
+                      self_contained = TRUE) +
       theme(axis.title.y= element_text(angle=0), 
-            axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 0.3),
-            axis.ticks.x= element_blank(),
-            panel.background= element_blank(), 
+           axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 0.3),
+          axis.ticks.x= element_blank(),
+         panel.background= element_blank(), 
             axis.line= element_line(color= 'grey'))
-  })
+   print(r)
+ })
   
   #############   Employer - Turnover Rate   #########################
   selected_filter <- reactive({
