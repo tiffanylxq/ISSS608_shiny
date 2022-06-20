@@ -77,10 +77,10 @@ Count_Checkin_Daily$Num_of_Employees <- as.numeric(Count_Checkin_Daily$Num_of_Em
 Count_Checkin_Weekly$Num_of_Employees <- as.numeric(Count_Checkin_Weekly$Num_of_Employees)
 Count_Checkin_Weekday$Num_of_Employees <- as.numeric(Count_Checkin_Weekday$Num_of_Employees)
 Count_Checkin_Monthly$Num_of_Employees <- as.numeric(Count_Checkin_Monthly$Num_of_Employees)
-Count_Checkin_Daily$Pay_Group <-factor(Count_Checkin_Daily$Pay_Group, levels = c("<=$15 (Low)","$16-35(Mid)", ">$36(High)"))
-Count_Checkin_Weekly$Pay_Group <-factor(Count_Checkin_Weekly$Pay_Group, levels = c("<=$15 (Low)","$16-35(Mid)", ">$36(High)"))
-Count_Checkin_Weekday$Pay_Group <-factor(Count_Checkin_Weekday$Pay_Group, levels = c("<=$15 (Low)","$16-35(Mid)", ">$36(High)"))
-Count_Checkin_Monthly$Pay_Group <-factor(Count_Checkin_Monthly$Pay_Group, levels = c("<=$15 (Low)","$16-35(Mid)", ">$36(High)"))
+#Count_Checkin_Daily$payGroup <-factor(Count_Checkin_Daily$payGroup, levels = c("<=$15 (Low)","$16-35(Mid)", ">$36(High)"))
+#Count_Checkin_Weekly$payGroup <-factor(Count_Checkin_Weekly$payGroup, levels = c("<=$15 (Low)","$16-35(Mid)", ">$36(High)"))
+#Count_Checkin_Weekday$payGroup <-factor(Count_Checkin_Weekday$payGroup, levels = c("<=$15 (Low)","$16-35(Mid)", ">$36(High)"))
+#Count_Checkin_Monthly$payGroup <-factor(Count_Checkin_Monthly$payGroup, levels = c("<=$15 (Low)","$16-35(Mid)", ">$36(High)"))
 
 
 #========================#
@@ -88,7 +88,7 @@ Count_Checkin_Monthly$Pay_Group <-factor(Count_Checkin_Monthly$Pay_Group, levels
 #========================#
 
 ui <- navbarPage(
-  title = "NGAGE&XPLORE: An Interactive Exploration of Engagement's Economy",
+  title = "ENGAGE & EXPLORE: An Interactive Exploration of Engagement's Economy",
   fluid = TRUE,
   theme=shinytheme("flatly"),
   id = "navbarID",
@@ -337,15 +337,27 @@ ui <- navbarPage(
                         
   navbarMenu("Employer",
              tabPanel("Map View", 
-              sidebarPanel(
-               selectInput("period", label = "Period", choices = c("Daily", "Weekly", "Weekday", "Monthly")),
-               selectInput("employee", label = "Num of Employees", choices = c("--")),
-               selectInput("job", label = "Num of Jobs", choices = c("--")),
-               selectInput("hired", label = "Hired Rate", choices = c("--")),
-               checkboxGroupInput("pay", label = "Pay Group", choices = c("")),
-               textInput("eid", label = "Employer Id", value = "")),
-              mainPanel(
+              sidebarPanel(width = 3,
+               HTML("<h3>Input General Parameters</h3>"),
+               selectInput("period", label = "Choose Time Period to View", choices = c("Daily", "Weekly", "Weekday", "Monthly")),
+               selectInput("employee", label = "Choose Number of Employees Employed by Each Employer", choices = c("See All")),
+               selectInput("job", label = "Choose Number of Jobs Offered by Each Employer", choices = c("See All")),
+               HTML("<b>Choose Hiring Rate<sup>1</sup> of Each Employer</b>"),
+               selectInput("hired", label = " ", choices = c("See All")),
+               HTML("<h6><sup>1</sup>Hiring Rate = Number of Employees Employed / Number of Jobs Offered</h6>"),
+               checkboxGroupInput("pay", label = "Choose At Least 1 Average Pay Given by Each Employer", 
+                                  choices = list("<=$15 (Low)" = "<=$15 (Low)", 
+                                                 "$16-35(Mid)" = "$16-35(Mid)", 
+                                                 ">$36(High)s" = ">$36(High)"),
+                                  selected = c("<=$15 (Low)","$16-35(Mid)", ">$36(High)")),
+               HTML("<b>Fliter the Entire Map and Datable based on EmployerId</b>"),
+               HTML("<h6> Use comma (,) to select multiple employers eg. 379,862,884 </h6>"),
+               textInput("eid", label = " ", value = "")),
+             mainPanel(width =9,
                 HTML("<h3>Interactive City Map View</h3>"),
+                HTML("<p> This map shows number of employees employed by each employer. 
+                    If there are no corresponding data from the selected parameters, an error message will be displayed. </p>"),
+                
                tmapOutput("plot1"),
                DT::dataTableOutput("aTable")
              )),
@@ -356,19 +368,62 @@ ui <- navbarPage(
                 plotOutput("test")
              )),
              tabPanel("Turnover Rate", 
-              sidebarPanel(
-                 selectInput("change_filter", label = "Filter by", choices = c("--", "Date", "Week", "Month")), 
-                 selectInput("change_value", label = "Options", choices = c("--"))
-               ), 
-              mainPanel(
-               splitLayout( 
-                 plotOutput("ChangeStaff"),
-                 plotOutput("ChangeJob")
-               ), 
-               splitLayout( 
-                 plotlyOutput("ChangeStaffJ"),
-                 plotlyOutput("ChangeJobJ")
-               )
+              sidebarPanel(width = 3,
+                 HTML("<h3>Input General Parameters</h3>"),
+                
+                 selectInput("change_filter", label = "Choose Time Period to View", choices = c("See All", "Date", "Week", "Month")), 
+                 selectInput("change_value", label = "Refine Time Period", choices = c("See All")),
+                             selectInput(inputId = "xvariableXQ",
+                                         label = "Select x-variable:",
+                                         choices = c("Household Size" = "householdSize",
+                                                     "Have Kids?" = "haveKids",
+                                                     "Education" = "educationLevel",
+                                                     "Interest Group" = "interestGroup",
+                                                     "No. of Employers/Employees" = "???"),
+                                         selected = "educationLevel"),
+                             selectInput(inputId = "yvariableXQ",
+                                         label = "Select y-variable:",
+                                         choices = c("Joviality" = "joviality",
+                                                     "Age" = "age",
+                                                     "No. of Employers/Employees" = "???"),
+                                         selected = "joviality"),
+                             selectInput(inputId = "testXQ",
+                                         label = "Type of statistical test:",
+                                         choices = c("parametric" = "p",
+                                                     "nonparametric" = "np",
+                                                     "robust" = "r",
+                                                     "Bayes Factor" = "bf"),
+                                         selected = "p"),
+                             selectInput(inputId = "plotTypeXQ",
+                                         label = "Type of plot:",
+                                         choices = c("boxviolin" = "boxviolin",
+                                                     "box" = "box",
+                                                     "violin" = "violin"),
+                                         selected = "boxviolin"),
+                             textInput(inputId = "plotTitleXQ",
+                                       label = "Plot title",
+                                       placeholder = "Enter text to be used as plot title"),
+                             actionButton(inputId = "goButton", 
+                                          "Go!")
+                ),
+                mainPanel(width = 9,
+                          box(
+                            plotOutput("ChangeStaffJ",
+                                       height = "500px")
+                )
+              #mainPanel(width = 9,
+               #splitLayout( 
+                # plotlyOutput("ChangeStaff",
+                #                height = "500px"),
+                 #plotOutput("ChangeJob",
+                #               height = "500px")
+              # ), 
+               #splitLayout( 
+                # plotlyOutput("ChangeStaffJ",
+              #               height = "500px"),
+                 #plotlyOutput("ChangeJobJ",
+              #               height = "500px")
+              # )
              ))
   )
 )
@@ -396,29 +451,29 @@ server <- function (input, output, session) {
   })
   
   observeEvent(selected_period(), {
-    updateSelectInput(inputId = "employee", choices = c("--",unique(selected_period()$Num_of_Employees)))
-    updateSelectInput(inputId = "job", choices = c("--",unique(selected_period()$Num_of_Jobs)))
-    updateSelectInput(inputId = "hired", choices = c("--",unique(selected_period()$HiredRate)))
-    pay <- unique(selected_period()$Pay_Group)
-    updateCheckboxGroupInput(inputId = "pay", choices = pay, selected = pay)
+    updateSelectInput(inputId = "employee", choices = c("See All", order(sort(unique(selected_period()$Num_of_Employees)))))
+    updateSelectInput(inputId = "job", choices = c("See All",order(sort(unique(selected_period()$Num_of_Jobs)))))
+    updateSelectInput(inputId = "hired", choices = c("See All",order(sort(unique(selected_period()$hiringRate)))))
+    #pay <- unique(selected_period()$payGroup)
+    #updateCheckboxGroupInput(inputId = "pay", choices = pay, selected = pay)
     updateTextInput(inputId = "eid", value = "")
   })
   
   
   filtered_data <- reactive({
     temp <- selected_period()
-    if (input$employee != "--") {
+    if (input$employee != "See All") {
       temp <- filter(temp, Num_of_Employees == input$employee)
     }
-    if (input$job != "--") {
+    if (input$job != "See All") {
       temp <- filter(temp, Num_of_Jobs == input$job)
     }
-    if (input$hired != "--") {
-      temp <- filter(temp, HiredRate == input$hired)
+    if (input$hired != "See All") {
+      temp <- filter(temp, hiringRate == input$hired)
     }
-    temp <- filter(temp, Pay_Group == input$pay)
+    temp <- filter(temp, payGroup == input$pay)
     if (input$eid != "") {
-      temp <- filter(temp, employerId == input$eid)
+      temp <- filter(temp, employerId ==  unlist(strsplit(input$eid, ",")))
     }
     temp
   })
@@ -490,52 +545,73 @@ server <- function (input, output, session) {
     
   })
   
-  output$ChangeStaff <- renderPlot({
+  output$ChangeStaff <- renderPlotly({
     
     ggplot(selected_value(), aes(x= as.factor(Num_of_Employees), fill = haveKids)) +
       geom_bar() +
       facet_wrap(~educationLevel)+
-      ggtitle('Employers with Turnover Staff') +
-      xlab("No. of Employees") +
+      ggtitle('No. of Different Employees in Different Education Level') +
+      xlab("No. of Employees Employed") +
       ylab("No. of\nEmployers") +
       theme(axis.title.y= element_text(angle=0), axis.ticks.x= element_blank(),
             axis.line= element_line(color= 'grey'))
     
   })
   
-  output$ChangeStaffJ <- renderPlotly({
-    p<- ggplot(selected_value(), aes(x = educationLevel, y = Num_of_Employees, fill=joviality)) + 
-      ggdist::stat_halfeye(
-        adjust = .5, 
-        width = .6, 
-        .width = 0, 
-        justification = -.3, 
-        point_colour = NA) + 
-      geom_boxplot(
-        width = .25, 
-        outlier.shape = NA
-      ) +
-      geom_point(
-        size = 1.3,
-        alpha = .3,
-        position = position_jitter(
-          seed = 1, width = .1
-        ),
-        aes(text = paste('Employee: ', selected_value()$participantId,
-                         'Employer: ', selected_value()$employerId,
-                         'Date of Exit: ', selected_value()$Date))
-      ) + 
-      coord_cartesian(xlim = c(1.2, NA), clip = "off")+
-      coord_flip() +
-      ggtitle(label = "Education Level & Joviality")+
-      theme_minimal()+
-      theme(plot.title = element_text(size=12, face="bold",hjust = 0.5))+
-      theme(axis.title.y= element_blank(),
-            panel.background= element_blank(), axis.line= element_line(color= 'grey'))
+  ###change ggstats##
+  output$ChangeStaffJ <- renderPlot({
+    input$goButton
+    set.seed(1234)
     
-    ggplotly(p, tooltip = 'text') 
-    
+  ggbetweenstats(
+    data = selected_value(),
+    x = !!input$xvariable, 
+    y = !!input$yvariable,
+    type = input$test,
+    title = isolate({
+      toTitleCase(input$plotTitle)
+    }),
+    plot.type = input$plotType,
+    mean.ci = TRUE, 
+    pairwise.comparisons = TRUE, 
+    pairwise.display = "s",
+    p.adjust.method = "fdr",
+    messages = FALSE)
   })
+  #
+ # output$ChangeStaffJ <- renderPlotly({
+  #  p<- ggplot(selected_value(), aes(x = educationLevel, y = Num_of_Employees, fill=joviality)) + 
+  #   ggdist::stat_halfeye(
+  #     adjust = .5, 
+  #     width = .6, 
+  #     .width = 0, 
+  #     justification = -.3, 
+  #     point_colour = NA) + 
+  #   geom_boxplot(
+  #     width = .25, 
+  #     outlier.shape = NA
+  #   ) +
+  #   geom_point(
+  #     size = 1.3,
+  #     alpha = .3,
+  #     position = position_jitter(
+  #       seed = 1, width = .1
+  #     ),
+  #     aes(text = paste('Employee: ', selected_value()$participantId,
+  #                      'Employer: ', selected_value()$employerId,
+  #                      'Date of Exit: ', selected_value()$Date))
+  #   ) + 
+  #   coord_cartesian(xlim = c(1.2, NA), clip = "off")+
+  #   coord_flip() +
+  #   ggtitle(label = "Education Level & Joviality")+
+  #   theme_minimal()+
+  #   theme(plot.title = element_text(size=12, face="bold",hjust = 0.5))+
+  #   theme(axis.title.y= element_blank(),
+  #         panel.background= element_blank(), axis.line= element_line(color= 'grey'))
+    
+  # ggplotly(p, tooltip = 'text') 
+    
+  #  })
   
   
   selected_job <- reactive({
@@ -555,9 +631,9 @@ server <- function (input, output, session) {
     ggplot(selected_job(), aes(x= as.factor(Num_of_Employers), fill = haveKids)) +
       geom_bar() +
       facet_wrap(~educationLevel)+
-      ggtitle('Employers with Turnover Staff') +
-      xlab("No. of Employees") +
-      ylab("No. of\nEmployers") +
+      ggtitle('Residents with >1 Employers') +
+      xlab("No. of Employers") +
+      ylab("No. of\nResidents") +
       theme(axis.title.y= element_text(angle=0), axis.ticks.x= element_blank(),
             axis.line= element_line(color= 'grey'))
     
