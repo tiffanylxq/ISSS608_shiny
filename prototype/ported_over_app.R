@@ -58,8 +58,8 @@ use_this_for_balance <- read_csv("data/heatmap/balance_heatmap_full.csv")
 use_this_for_balance$timestamp <- as.Date(use_this_for_balance$timestamp, format =  "%d/%m/%Y")
 
 ##### Part3 #####
-Change_Staff <- read_rds("data/Change_Staff_B.rds")
-Change_Job <- read_rds("data/Change_Job_B.rds")
+Change_Staff <- read_rds("data/Change_Staff.rds")
+Change_Job <- read_rds("data/Change_Job.rds")
 buildings <- read_sf("data/Buildings.csv", 
                      options = "GEOM_POSSIBLE_NAMES=location")
 employers <- read_sf("data/Employers.csv", 
@@ -77,11 +77,6 @@ Count_Checkin_Daily$Num_of_Employees <- as.numeric(Count_Checkin_Daily$Num_of_Em
 Count_Checkin_Weekly$Num_of_Employees <- as.numeric(Count_Checkin_Weekly$Num_of_Employees)
 Count_Checkin_Weekday$Num_of_Employees <- as.numeric(Count_Checkin_Weekday$Num_of_Employees)
 Count_Checkin_Monthly$Num_of_Employees <- as.numeric(Count_Checkin_Monthly$Num_of_Employees)
-#Count_Checkin_Daily$payGroup <-factor(Count_Checkin_Daily$payGroup, levels = c("<=$15 (Low)","$16-35(Mid)", ">$36(High)"))
-#Count_Checkin_Weekly$payGroup <-factor(Count_Checkin_Weekly$payGroup, levels = c("<=$15 (Low)","$16-35(Mid)", ">$36(High)"))
-#Count_Checkin_Weekday$payGroup <-factor(Count_Checkin_Weekday$payGroup, levels = c("<=$15 (Low)","$16-35(Mid)", ">$36(High)"))
-#Count_Checkin_Monthly$payGroup <-factor(Count_Checkin_Monthly$payGroup, levels = c("<=$15 (Low)","$16-35(Mid)", ">$36(High)"))
-
 
 #========================#
 ######   Shiny UI   ######
@@ -348,16 +343,17 @@ ui <- navbarPage(
                checkboxGroupInput("pay", label = "Choose At Least 1 Average Pay Given by Each Employer", 
                                   choices = list("<=$15 (Low)" = "<=$15 (Low)", 
                                                  "$16-35(Mid)" = "$16-35(Mid)", 
-                                                 ">$36(High)s" = ">$36(High)"),
+                                                 ">$36(High)" = ">$36(High)"),
                                   selected = c("<=$15 (Low)","$16-35(Mid)", ">$36(High)")),
                HTML("<b>Fliter the Entire Map and Datable based on EmployerId</b>"),
-               HTML("<h6> Use comma (,) to select multiple employers eg. 379,862,884 </h6>"),
-               textInput("eid", label = " ", value = "")),
+               HTML("<h6> Use comma (,) to select multiple employers.</h6>"),
+               textInput("eid", label = " ", value = "",placeholder = "eg. 379,862,884"),
+               textInput(inputId = "input_title", label = "Map title", placeholder = "Enter text to be used as map title")),
              mainPanel(width =9,
                 HTML("<h3>Interactive City Map View</h3>"),
                 HTML("<p> This map shows number of employees employed by each employer. 
                     If there are no corresponding data from the selected parameters, an error message will be displayed. </p>"),
-                
+                textOutput("map_title"),
                tmapOutput("plot1"),
                DT::dataTableOutput("aTable")
              )),
@@ -373,57 +369,51 @@ ui <- navbarPage(
                 
                  selectInput("change_filter", label = "Choose Time Period to View", choices = c("See All", "Date", "Week", "Month")), 
                  selectInput("change_value", label = "Refine Time Period", choices = c("See All")),
-                             selectInput(inputId = "xvariableXQ",
+                             selectInput(inputId = "x_var",
                                          label = "Select x-variable:",
                                          choices = c("Household Size" = "householdSize",
                                                      "Have Kids?" = "haveKids",
                                                      "Education" = "educationLevel",
                                                      "Interest Group" = "interestGroup",
-                                                     "No. of Employers/Employees" = "???"),
+                                                     "No. of Employers/Employees" = "NumEmployees.Employers"),
                                          selected = "educationLevel"),
-                             selectInput(inputId = "yvariableXQ",
+                             selectInput(inputId = "y_var",
                                          label = "Select y-variable:",
                                          choices = c("Joviality" = "joviality",
                                                      "Age" = "age",
-                                                     "No. of Employers/Employees" = "???"),
+                                                     "No. of Employers/Employees" = "NumEmployees.Employers"),
                                          selected = "joviality"),
-                             selectInput(inputId = "testXQ",
+                             selectInput(inputId = "stat_test",
                                          label = "Type of statistical test:",
-                                         choices = c("parametric" = "p",
-                                                     "nonparametric" = "np",
-                                                     "robust" = "r",
+                                         choices = c("Parametric" = "p",
+                                                     "Nonparametric" = "np",
+                                                     "Robust" = "r",
                                                      "Bayes Factor" = "bf"),
                                          selected = "p"),
-                             selectInput(inputId = "plotTypeXQ",
+                             selectInput(inputId = "plot_type",
                                          label = "Type of plot:",
-                                         choices = c("boxviolin" = "boxviolin",
-                                                     "box" = "box",
-                                                     "violin" = "violin"),
+                                         choices = c("Box-Violin" = "boxviolin",
+                                                     "Box" = "box",
+                                                     "Violin" = "violin"),
                                          selected = "boxviolin"),
-                             textInput(inputId = "plotTitleXQ",
+                             textInput(inputId = "plot_title",
                                        label = "Plot title",
                                        placeholder = "Enter text to be used as plot title"),
-                             actionButton(inputId = "goButton", 
-                                          "Go!")
+                             actionButton(inputId = "update_title", "Update Title")
                 ),
-                mainPanel(width = 9,
-                          #box(
-                            #plotOutput("ChangeStaffXQ",
-                                       #height = "500px")
-                #)
-              #mainPanel(width = 9,
-               #splitLayout( 
-                # plotlyOutput("ChangeStaff",
-                #                height = "500px"),
-                 #plotOutput("ChangeJob",
-                #               height = "500px")
-              # ), 
-               #splitLayout( 
-                # plotlyOutput("ChangeStaffJ",
-              #               height = "500px"),
-                 #plotlyOutput("ChangeJobJ",
-              #               height = "500px")
-              # )
+              mainPanel(width = 9,
+               splitLayout( 
+                 plotOutput("ChangeStaff",
+                                height = "500px"),
+                 plotOutput("ChangeJob",
+                               height = "500px")
+               ), 
+               splitLayout( 
+                 plotOutput("stats_staff",
+                            height = "500px"),
+                 plotOutput("stats_job",
+                             height = "500px")
+               )
              ))
   )
 )
@@ -446,16 +436,13 @@ server <- function (input, output, session) {
       Count_Checkin_Weekday
     } else {
       Count_Checkin_Monthly
-    } #%>%
-    #filter(EMPLOYEES == input$employees) 
+    }  
   })
   
   observeEvent(selected_period(), {
     updateSelectInput(inputId = "employee", choices = c("See All", order(sort(unique(selected_period()$Num_of_Employees)))))
     updateSelectInput(inputId = "job", choices = c("See All",order(sort(unique(selected_period()$Num_of_Jobs)))))
     updateSelectInput(inputId = "hired", choices = c("See All",order(sort(unique(selected_period()$hiringRate)))))
-    #pay <- unique(selected_period()$payGroup)
-    #updateCheckboxGroupInput(inputId = "pay", choices = pay, selected = pay)
     updateTextInput(inputId = "eid", value = "")
   })
   
@@ -478,6 +465,8 @@ server <- function (input, output, session) {
     temp
   })
   
+  output$map_title <- renderText({as.character(input$input_title)})
+  
   output$plot1 <- renderTmap({
     tm_shape(buildings)+
       tm_polygons(col = "grey60",
@@ -489,16 +478,19 @@ server <- function (input, output, session) {
   })
   
   output$aTable <- DT::renderDataTable({
-    DT::datatable(data = filtered_data() ,
-                  options= list(pageLength = 10),
-                  rownames = FALSE)
+    DT::datatable(data = filtered_data(),
+                  filter = 'top',
+                  rownames = FALSE,
+                  options = list(pageLength = 10,
+                    columnDefs = list(list(className = 'dt-center', targets ="_all")))
+    )
   }) 
   
   #############   Employer - Hiring Rate  #########################
   
   output$HiringRate <- renderTrelliscope({
     
-  r <- ggplot(Count_Checkin_Weekly, aes(x= as.factor(Week_Num), y= as.numeric(HiredRate))) +
+  r <- ggplot(Count_Checkin_Weekly, aes(x= as.factor(weekNum), y= as.numeric(HiredRate))) +
     geom_point(color='red') +
     labs(x= 'Week', y= 'HiredRate',
          title = 'Hiring Rate of Each Employers') +
@@ -520,9 +512,9 @@ server <- function (input, output, session) {
     if (input$change_filter == "Date") {
       unique(Change_Staff$Date)
     } else if (input$change_filter == "Week") {
-      unique(Change_Staff$Week_Num)
+      unique(Change_Staff$weekNum)
     } else if (input$change_filter == "Month") {
-      unique(Change_Staff$Yr_Month)
+      unique(Change_Staff$yearMonth)
     } else {
       c("--")
     }
@@ -536,91 +528,53 @@ server <- function (input, output, session) {
     if (input$change_filter == "Date") {
       filter(Change_Staff, Date == input$change_value)
     } else if (input$change_filter == "Week") {
-      filter(Change_Staff, Week_Num == input$change_value)
+      filter(Change_Staff, weekNum == input$change_value)
     } else if (input$change_filter == "Month") {
-      filter(Change_Staff, Yr_Month == input$change_value)
+      filter(Change_Staff, yearMonth == input$change_value)
     } else {
       Change_Staff
     } 
     
   })
   
-  output$ChangeStaff <- renderPlotly({
+  output$ChangeStaff <- renderPlot({
     
-    ggplot(selected_value(), aes(x= as.factor(Num_of_Employees), fill = haveKids)) +
+    ggplot(selected_value(), aes(x= as.factor(NumEmployees.Employers), fill = haveKids)) +
       geom_bar() +
       facet_wrap(~educationLevel)+
       ggtitle('No. of Different Employees in Different Education Level') +
       xlab("No. of Employees Employed") +
       ylab("No. of\nEmployers") +
+      geom_text(stat='count', aes(label=paste0(stat(count))), position = position_stack(vjust=0.5),size=3)+
       theme(axis.title.y= element_text(angle=0), axis.ticks.x= element_blank(),
             axis.line= element_line(color= 'grey'))
-    
   })
-  
-  ###change ggstats##
-  output$ChangeStaffJ <- renderPlot({
-    input$goButton
-    set.seed(1234)
-    
-  ggbetweenstats(
-    data = selected_value(),
-    x = !!input$xvariable, 
-    y = !!input$yvariable,
-    type = input$test,
-    title = isolate({
-      toTitleCase(input$plotTitle)
-    }),
-    plot.type = input$plotType,
-    mean.ci = TRUE, 
-    pairwise.comparisons = TRUE, 
-    pairwise.display = "s",
-    p.adjust.method = "fdr",
-    messages = FALSE)
+
+  output$stats_staff <- renderPlot({
+    input$update_title
+    ggbetweenstats(
+      data = selected_value(),
+      x = !!input$x_var, 
+      y = !!input$y_var,
+      type = input$stat_test,
+      title = isolate({
+        toTitleCase(input$plot_title)
+      }),
+      plot.type = input$plot_type,
+      mean.ci = TRUE, 
+      pairwise.comparisons = TRUE, 
+      pairwise.display = "s",
+      p.adjust.method = "fdr",
+      messages = FALSE)
   })
-  #
- # output$ChangeStaffJ <- renderPlotly({
-  #  p<- ggplot(selected_value(), aes(x = educationLevel, y = Num_of_Employees, fill=joviality)) + 
-  #   ggdist::stat_halfeye(
-  #     adjust = .5, 
-  #     width = .6, 
-  #     .width = 0, 
-  #     justification = -.3, 
-  #     point_colour = NA) + 
-  #   geom_boxplot(
-  #     width = .25, 
-  #     outlier.shape = NA
-  #   ) +
-  #   geom_point(
-  #     size = 1.3,
-  #     alpha = .3,
-  #     position = position_jitter(
-  #       seed = 1, width = .1
-  #     ),
-  #     aes(text = paste('Employee: ', selected_value()$participantId,
-  #                      'Employer: ', selected_value()$employerId,
-  #                      'Date of Exit: ', selected_value()$Date))
-  #   ) + 
-  #   coord_cartesian(xlim = c(1.2, NA), clip = "off")+
-  #   coord_flip() +
-  #   ggtitle(label = "Education Level & Joviality")+
-  #   theme_minimal()+
-  #   theme(plot.title = element_text(size=12, face="bold",hjust = 0.5))+
-  #   theme(axis.title.y= element_blank(),
-  #         panel.background= element_blank(), axis.line= element_line(color= 'grey'))
-    
-  # ggplotly(p, tooltip = 'text') 
-    
-  #  })
-  
   
   selected_job <- reactive({
     if (input$change_filter == "Date") {
       filter(Change_Job, Date == input$change_value)
     } else if (input$change_filter == "Week") {
-      filter(Change_Job, Week_Num == input$change_value)
+      filter(Change_Job, weekNum == input$change_value)
     } else if (input$change_filter == "Month") {
-      filter(Change_Job, Yr_Month == input$change_value)
+      filter(Change_Job, yearMonth == input$change_value)
     } else {
       Change_Job
     } 
@@ -628,48 +582,34 @@ server <- function (input, output, session) {
   
   output$ChangeJob <- renderPlot({
     
-    ggplot(selected_job(), aes(x= as.factor(Num_of_Employers), fill = haveKids)) +
+    ggplot(selected_job(), aes(x= as.factor(NumEmployees.Employers), fill = haveKids)) +
       geom_bar() +
       facet_wrap(~educationLevel)+
       ggtitle('Residents with >1 Employers') +
       xlab("No. of Employers") +
       ylab("No. of\nResidents") +
+      geom_text(stat='count', aes(label=paste0(stat(count))), position = position_stack(vjust=0.5),size=3)+
       theme(axis.title.y= element_text(angle=0), axis.ticks.x= element_blank(),
             axis.line= element_line(color= 'grey'))
     
   })
   
-  output$ChangeJobJ <- renderPlotly({
-    p<- ggplot(selected_job(), aes(x = educationLevel, y = Num_of_Employers, fill=joviality)) + 
-      ggdist::stat_halfeye(
-        adjust = .5, 
-        width = .6, 
-        .width = 0, 
-        justification = -.3, 
-        point_colour = NA) + 
-      geom_boxplot(
-        width = .25, 
-        outlier.shape = NA
-      ) +
-      geom_point(
-        size = 1.3,
-        alpha = .3,
-        position = position_jitter(
-          seed = 1, width = .1
-        ),
-        aes(text = paste('Employee: ', selected_job()$participantId,
-                         'Employer: ', selected_job()$employerId,
-                         'Date of Job Change: ', selected_job()$Date))
-      ) + 
-      coord_cartesian(xlim = c(1.2, NA), clip = "off")+
-      coord_flip() +
-      ggtitle(label = "Education Level & Joviality")+
-      theme_minimal()+
-      theme(plot.title = element_text(size=12, face="bold",hjust = 0.5))+
-      theme(axis.title.y= element_blank(),
-            panel.background= element_blank(), axis.line= element_line(color= 'grey'))
-    
-    ggplotly(p, tooltip = 'text') 
+  output$stats_job <- renderPlot({
+    input$update_title
+    ggbetweenstats(
+      data = selected_job(),
+      x = !!input$x_var, 
+      y = !!input$y_var,
+      type = input$stat_test,
+      title = isolate({
+        toTitleCase(input$plot_title)
+      }),
+      plot.type = input$plot_type,
+      mean.ci = TRUE, 
+      pairwise.comparisons = TRUE, 
+      pairwise.display = "s",
+      p.adjust.method = "fdr",
+      messages = FALSE) 
     
   })
   
