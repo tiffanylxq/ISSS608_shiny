@@ -407,10 +407,10 @@ ui <- navbarPage(
                                           "Go!")
                 ),
                 mainPanel(width = 9,
-                          box(
-                            plotOutput("ChangeStaffJ",
-                                       height = "500px")
-                )
+                          #box(
+                            #plotOutput("ChangeStaffXQ",
+                                       #height = "500px")
+                #)
               #mainPanel(width = 9,
                #splitLayout( 
                 # plotlyOutput("ChangeStaff",
