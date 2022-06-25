@@ -20,6 +20,7 @@ library(RColorBrewer)
 library(sftime)
 library(ggthemes)
 library(FunnelPlotR)
+library(rPackedBar)
 
 #========================#
 #####Data Extraction######
@@ -27,6 +28,7 @@ library(FunnelPlotR)
 
 ##### Part1 #####
 workplaces <- read_rds("data/workplaces.rds")
+jobs <- read_csv("data/Jobs.csv")
 sales <- read_rds("data/sales.rds")
 pubs <- read_sf("data/Pubs.csv", options = "GEOM_POSSIBLE_NAMES=location")
 restaurants <- read_sf("data/Restaurants.csv", options = "GEOM_POSSIBLE_NAMES=location")
@@ -147,7 +149,7 @@ ui <- navbarPage(
                           plotOutput("hplot6")),
                         
                         splitLayout(
-                         plotlyOutput("hplot3"),
+                         #plotlyOutput("hplot3"),
                          plotlyOutput("hplot4")),
 
                         )),
@@ -177,8 +179,21 @@ ui <- navbarPage(
                           plotlyOutput("hplot8")),
                         splitLayout(
                           plotlyOutput("hplot9"))
-                      )
-             )),
+                      )),
+             tabPanel("Workplaces v2",
+                      sidebarPanel(
+                        selectInput(inputId = "hEduLvl",
+                                     label = "Education Level",
+                                    choices = c("Low" = "Low",
+                                                "High School Or College" = "HighSchoolOrCollege",
+                                                "Bachelors" = "Bachelors",
+                                                "Graduate" = "Graduate"),
+                                    selected = "Low")),
+                      
+                      mainPanel(
+                          plotlyOutput("hplot10"),
+                          plotlyOutput("hplot11"))
+                      )),
   
   
   navbarMenu("Income and Expense",
@@ -1757,12 +1772,15 @@ server <- function (input, output, session) {
   
   data3 <- reactive({
     req(input$hBusinessID)
+    wday_levels <- c('Mon','Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')
+    
     df <- sales %>%
       filter(venueId %in% input$hBusinessID) %>%
       filter(date_in >= input$hDate[1] & date_in < input$hDate[2]) %>%
+      mutate(wday_in = droplevels.factor(wday_in)) %>%
       group_by(venueId, date_in, wday_in) %>%
-      summarise(daily_sales = sum(spend)) %>%
-      ungroup()
+      summarise(daily_sales = sum(spend)) 
+
   })
   
   output$hplot3 <- renderPlotly({
@@ -1832,9 +1850,9 @@ server <- function (input, output, session) {
                   border.col = "black",
                   border.lwd = 1) +
       tm_shape(data5()) +
-      tm_bubbles(col = "red",
+      tm_bubbles(col = "venueId",
                  size = "total_sales",
-                 alpha = 0.3) +
+                 alpha = 0.5) +
       tm_layout(bg.color="white",
                 main.title = "Total Sales by Businesses", 
                 main.title.position = "center")
@@ -1850,13 +1868,13 @@ server <- function (input, output, session) {
   
   output$hplot6 <- renderPlot({
     funnel_plot(
-      numerator = data6()$total_sales,
-      denominator = data6()$visitors,
+      numerator = data6()$visitors,
+      denominator = data6()$total_sales/data6()$visitors,
       group = data6()$venueId,
-      y_range = c(10,25),
-      title = "Cumulative Sales by Cumulative Visitors",           
-      x_label = "Total Sales", 
-      y_label = "Total Visitors" 
+      #y_range = c(10,25),
+      title = "Cumulative Visitors by Sales per Visitor",           
+      x_label = "Total Visitors", 
+      y_label = "Sales per Visitor" 
     )
   })
   
@@ -1911,7 +1929,6 @@ server <- function (input, output, session) {
   })
   
   data9 <- reactive({
-    #req(input$hBusinessID)
     df <- workplaces %>%
       filter(venueId %in% input$h2BusinessID) %>%
       filter(Date >= input$h2Date[1] & Date < input$h2Date[2]) %>%
@@ -1939,6 +1956,42 @@ server <- function (input, output, session) {
                         package = "RColorBrewer",
                         palette = "Set2")
     ggplotly(p)
+  })
+  
+  ##### Workplaces v2#####
+  
+  data10 <- reactive({
+    df <- jobs %>% 
+      filter(educationRequirement %in% input$hEduLvl) %>%
+      group_by(employerId) %>% 
+      summarise(jobsno = n(),
+                  avg_hourly_pay = round(mean(hourlyRate),2),
+                  total_hourly_pay = sum(hourlyRate))
+  })
+  
+  output$hplot10 <- renderPlotly({
+    plotly_packed_bar(input_data = data10(), 
+                      label_column = 'employerId',
+                      value_column = 'avg_hourly_pay',
+                      number_rows = 10,
+                      plot_title = 'Top 10 Average Hourly Pay by Education Level', 
+                      xaxis_label = 'Average Hourly Pay',
+                      hover_label = 'Average Hourly Pay',
+                      min_label_width = 0.001,
+                      label_color = 'white') 
+  })
+  
+  output$hplot11 <- renderPlotly({
+    plotly_packed_bar(input_data = data10(), 
+                      label_column = 'employerId',
+                      value_column = 'total_hourly_pay',
+                      number_rows = 10,
+                      plot_title = 'Top 10 Total Hourly Pay by Education Level', 
+                      xaxis_label = 'Total Hourly Pay',
+                      hover_label = 'Total Hourly Pay',
+                      min_label_width = 0.001,
+                      color_bar_color = '#66cdaa',
+                      label_color = 'white') 
   })
 }
 
