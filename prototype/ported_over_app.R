@@ -113,7 +113,6 @@ ui <- navbarPage(
                                      choices = c("Pubs" = "Recreation (Social Gathering)",
                                                  "Restaurants" = "Eating"),
                                      selected = "Recreation (Social Gathering)"),
-                        
                         # HTML("<p>To view top n businesses, select n > 0.</p>"),
                         # HTML("<p>To view bottom n businesses, select n < 0.</p>"),
                         # sliderInput(inputId = "hNumber",
@@ -136,7 +135,43 @@ ui <- navbarPage(
                         HTML("<p>To deep dive on the weekday sales pattern, select a venueID.</p>"),
                         selectInput(inputId = "hBusinessID",
                                     label = "VenueID",
-                                    "venueID")),
+                                    "venueID"),
+                        selectInput(inputId = "hPlotType",
+                                    label = "Type of plot",
+                                    choices = c("Box" = "box",
+                                                "Violin" = "violin",
+                                                "Box-Violin" = "boxviolin"),
+                                    selected = "boxviolin"),
+                        selectInput(inputId = "hTestType",
+                                    label = "Test Type",
+                                    choices = c("Parametric" = "p",
+                                                "Non-parametric" = "np",
+                                                "Robust" = "r",
+                                                "Bayes Factor" = "bf"),
+                                    selected = "p"),
+                        selectInput(inputId = "hPairwiseCom",
+                                    label  = "Pairwise Comparisons",
+                                    choices = c("True" = "TRUE",
+                                                "False" = "FALSE"),
+                                    selected = "TRUE"),
+                        selectInput(inputId = "hPairwiseDis",
+                                    label  = "Pairwise Display",
+                                    choices = c("Only significant" = "s",
+                                                "Only non-significant" = "ns",
+                                                "Everything" = "all"),
+                                    selected = "s"),
+                        selectInput(inputId = "hPAdjust",
+                                    label  = "P Adjust Methods",
+                                    choices = c("Holm" = "holm",
+                                                "Hochberg" = "hochberg",
+                                                "Hommel" = "hommel",
+                                                "Bonferroni" = "bonferroni",
+                                                "BH" = "BH",
+                                                "BY" = "BY",
+                                                "FDR" = "fdr",
+                                                "None" = "none"),
+                                    selected = "fdr"),
+                        ),
                       
                       mainPanel(
                         splitLayout(
@@ -190,16 +225,31 @@ ui <- navbarPage(
                                                 "Bachelors" = "Bachelors",
                                                 "Graduate" = "Graduate"),
                                     selected = "Low"),
-                        HTML("<p>To deep dive on wages offered by an Employer.</p>"),
-                                   numericInput(inputId = "h3EmployerID",
-                                               label = "Employer ID",
-                                               "EmplyerID")),
+                        # HTML("<p>To deep dive on wages offered by an Employer.</p>"),
+                        #            numericInput(inputId = "h3EmployerID",
+                        #                        label = "Employer ID",
+                        #                        "EmplyerID")
+                        
+                        selectInput(inputId = "h2PlotType",
+                                    label = "Type of plot",
+                                    choices = c("Box" = "box",
+                                                "Violin" = "violin",
+                                                "Box-Violin" = "boxviolin"),
+                                    selected = "boxviolin"),
+                        selectInput(inputId = "h2TestType",
+                                    label = "Test Type",
+                                    choices = c("Parametric" = "p",
+                                                "Non-parametric" = "np",
+                                                "Robust" = "r",
+                                                "Bayes Factor" = "bf"),
+                                    selected = "p")
+                        ),
                       
                       mainPanel(
                           splitLayout(
                             plotlyOutput("hplot10"),
-                            DT::dataTableOutput("dplot10")),
-                          plotlyOutput("hplot12")
+                            plotlyOutput("hplot12")),
+                          DT::dataTableOutput("dplot10")
                           #plotlyOutput("hplot11"),
                           )
                       )),
@@ -1795,14 +1845,13 @@ server <- function (input, output, session) {
   
   data3 <- reactive({
     req(input$hBusinessID)
-    wday_levels <- c('Mon','Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')
     
     df <- sales %>%
       filter(venueId %in% input$hBusinessID) %>%
-      #filter(date_in >= input$hDate[1] & date_in < input$hDate[2]) %>%
-      #droplevels(as.factor(wday_in)) %>%
-      group_by(venueId, date_in, wday_in) %>%
-      summarise(daily_sales = sum(spend)) 
+      group_by(date_in, wday_in) %>%
+      summarise(daily_sales = sum(spend)) %>%
+      mutate(wday_in = factor(wday_in,
+                              levels = c('Mon','Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')))
 
   })
   
@@ -1812,11 +1861,12 @@ server <- function (input, output, session) {
     p <- ggbetweenstats(data = data3(), 
                         x = wday_in, 
                         y = daily_sales, 
-                        type = "p", 
+                        type = input$hTestType, 
+                        plot.type = input$hPlotType,
                         mean.ci = TRUE, 
-                        pairwise.comparisons = TRUE, 
-                        pairwise.display = "s",
-                        p.adjust.method = "fdr",
+                        # pairwise.comparisons = input$hPairwiseCom,
+                        # pairwise.display = input$hPairwiseDis,
+                        # p.adjust.method = input$hPAdjust,
                         messages = FALSE,
                         title = "Distribution of Weekday Sales",
                         xlab = "Weekday",
@@ -2037,7 +2087,7 @@ server <- function (input, output, session) {
   data10 <- reactive({
     df <- jobs %>% 
       filter(educationRequirement %in% input$hEduLvl) %>%
-      group_by(employerId) %>% 
+      group_by(employerId, educationRequirement) %>% 
       summarise(jobsno = n(),
                   avg_hourly_pay = round(mean(hourlyRate),2),
                   total_hourly_pay = sum(hourlyRate))
@@ -2075,33 +2125,25 @@ server <- function (input, output, session) {
                       label_color = 'white') 
   })
   
-  observe({
-    updateSelectInput(session, "h3EmployerID", choices = unique(jobs$employerId))
-  })
-  
-  data12 <- reactive({
-    df <- jobs %>%
-      filter(employerId %in% input$h3EmployerID) %>%
-      na.omit()
-  })
-  
+
   output$hplot12 <- renderPlotly({
-    p <- ggbetweenstats(data = data12(), 
+    p <- ggbetweenstats(data = data10(), 
                         x = educationRequirement, 
-                        y = hourlyRate, 
-                        type = "p", 
+                        y = avg_hourly_pay,
+                        type = input$h2TestType, 
+                        plot.type = input$h2PlotType,
                         mean.ci = TRUE, 
-                        pairwise.comparisons = TRUE, 
-                        pairwise.display = "s",
-                        p.adjust.method = "fdr",
+                        # pairwise.comparisons = input$hPairwiseCom,
+                        # pairwise.display = input$hPairwiseDis,
+                        # p.adjust.method = input$hPAdjust,
                         messages = FALSE,
-                        title = "Distribution of Hourly Wages Offered by Employer",
+                        title = "Distribution of Average Hourly Wages Offered by Employer",
                         xlab = "Education Level",
-                        ylab = "Hourly Wages",
+                        ylab = "Average Hourly Wages",
                         centrality.point.args = list(size  = 2, color = "darkred"),
                         #centrality.label.args = list(size  = 5, color = "red"),
                         package = "RColorBrewer",
-                        palette = "Set2")
+                        palette = "Paired") 
     ggplotly(p)
   })
 
