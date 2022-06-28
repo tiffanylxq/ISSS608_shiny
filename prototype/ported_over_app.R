@@ -133,8 +133,8 @@ ui <- navbarPage(
                         #                label = "Select Date Range:",
                         #                start = "2022-03-01",
                         #                end = "2023-03-01"),
-                        
-                        HTML("<p>To deep dive on the weekday sales pattern, select a venueID.</p>"),
+                        HTML("<p> </p>"),
+                        HTML("<p>Select a venueID and the available options to view the daily sales distribution across the weekdays.</p>"),
                         selectInput(inputId = "hBusinessID",
                                     label = "VenueID",
                                     "venueID"),
@@ -151,11 +151,10 @@ ui <- navbarPage(
                                                 "Robust" = "r",
                                                 "Bayes Factor" = "bf"),
                                     selected = "p"),
-                        selectInput(inputId = "hPairwiseCom",
-                                    label  = "Pairwise Comparisons",
-                                    choices = c("True" = "TRUE",
-                                                "False" = "FALSE"),
-                                    selected = "TRUE"),
+                        # selectInput(inputId = "hPairwiseCom",
+                        #             label  = "Pairwise Comparisons",
+                        #             choices = c("True" = TRUE,
+                        #                         "False" = FALSE)),
                         selectInput(inputId = "hPairwiseDis",
                                     label  = "Pairwise Display",
                                     choices = c("Only significant" = "s",
@@ -186,7 +185,7 @@ ui <- navbarPage(
                           #plotOutput("hplot5")),
                         
                         splitLayout(
-                         plotlyOutput("hplot3"),
+                         plotOutput("hplot3"),
                          #plotlyOutput("hplot4")
                          ),
 
@@ -231,7 +230,7 @@ ui <- navbarPage(
                         #            numericInput(inputId = "h3EmployerID",
                         #                        label = "Employer ID",
                         #                        "EmplyerID")
-                        
+                        HTML("<p>Select the available options to view the average hourly wages distribution for all employers.</p>"),
                         selectInput(inputId = "h2PlotType",
                                     label = "Type of plot",
                                     choices = c("Box" = "box",
@@ -1811,7 +1810,8 @@ server <- function (input, output, session) {
                 aes(x=reorder(venueId, - total_sales), y= total_sales, fill=venueId)) +
       geom_bar(stat = "identity") +
       labs(x = "Business ID" , y = "Total Sales",
-           title = "Top Overall Performing Business")
+           title = "Top Overall Performing Businesses") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
     ggplotly(p)
   })
   
@@ -1842,40 +1842,42 @@ server <- function (input, output, session) {
   
   ### to list down the venue dynamically for hplot3 and hplot4 ###
   observe({
-    updateSelectInput(session, "hBusinessID", choices = unique(sales$venueId))
+    updateSelectInput(session, "hBusinessID", choices = sort(as.numeric(unique(data1()$venueId))))
   })
   
   data3 <- reactive({
     req(input$hBusinessID)
     
-    df <- sales %>%
-      filter(venueId %in% input$hBusinessID)
+    df <- data.frame(sales) %>%
+      filter(venueId %in% input$hBusinessID) %>%
+      select(venueId,wday_in,daily_sales)
     # %>%
     #   group_by(date_in, wday_in) %>%
     #   summarise(daily_sales = sum(spend))
   })
   
-  output$hplot3 <- renderPlotly({
+  output$hplot3 <- renderPlot({
     # d <- event_data("plotly_click")
     # if(is.null(d)) return(NULL)
-    p <- ggbetweenstats(data = data3(), 
-                        x = wday_in, 
-                        y = daily_sales, 
-                        type = input$hTestType, 
+  ggbetweenstats(data = data3(),
+                        x = wday_in,
+                        y = daily_sales,
+                        type = input$hTestType,
                         plot.type = input$hPlotType,
-                        mean.ci = TRUE, 
+                        mean.ci = TRUE,
                         # pairwise.comparisons = input$hPairwiseCom,
-                        # pairwise.display = input$hPairwiseDis,
-                        # p.adjust.method = input$hPAdjust,
+                        pairwise.display = input$hPairwiseDis,
+                        p.adjust.method = input$hPAdjust,
                         messages = FALSE,
-                        title = "Distribution of Weekday Sales",
+                        title = "Distribution of Daily Sales by Weekday",
                         xlab = "Weekday",
                         ylab = "Daily Sales Amount",
                         centrality.point.args = list(size  = 2, color = "darkred"),
                         #centrality.label.args = list(size  = 5, color = "red"),
                         package = "RColorBrewer",
-                        palette = "Set2")
-    ggplotly(p)
+                        palette = "Paired")
+      
+
   })
   
   # data4 <- reactive({
@@ -2132,15 +2134,11 @@ server <- function (input, output, session) {
                         type = input$h2TestType, 
                         plot.type = input$h2PlotType,
                         mean.ci = TRUE, 
-                        # pairwise.comparisons = input$hPairwiseCom,
-                        # pairwise.display = input$hPairwiseDis,
-                        # p.adjust.method = input$hPAdjust,
                         messages = FALSE,
                         title = "Distribution of Average Hourly Wages Offered by Employer",
                         xlab = "Education Level",
                         ylab = "Average Hourly Wages",
                         centrality.point.args = list(size  = 2, color = "darkred"),
-                        #centrality.label.args = list(size  = 5, color = "red"),
                         package = "RColorBrewer",
                         palette = "Paired") 
     ggplotly(p)
