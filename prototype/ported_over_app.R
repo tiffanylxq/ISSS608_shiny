@@ -29,20 +29,22 @@ library(rPackedBar)
 ##### Part1 #####
 workplaces <- read_rds("data/workplaces.rds")
 jobs <- read_csv("data/Jobs.csv")
-sales <- read_rds("data/sales.rds")
+#sales <- read_rds("data/sales.rds")
+sales <- read_rds("data/sales_r.rds")
 pubs <- read_sf("data/Pubs.csv", options = "GEOM_POSSIBLE_NAMES=location")
 restaurants <- read_sf("data/Restaurants.csv", options = "GEOM_POSSIBLE_NAMES=location")
 
-pubs <- pubs %>%
-  dplyr::rename(venueId = pubId) %>%
-  select(venueId, maxOccupancy, location, buildingId)
-
-restaurants <- restaurants %>%
-  dplyr::rename(venueId = restaurantId) %>%
-  select(venueId, maxOccupancy, location, buildingId)
-
-pubs_resto <- rbind(pubs, restaurants)
-pubs_resto_v <- left_join(pubs_resto, sales, by = 'venueId')
+### For tmap ###
+# pubs <- pubs %>%
+#   dplyr::rename(venueId = pubId) %>%
+#   select(venueId, maxOccupancy, location, buildingId)
+# 
+# restaurants <- restaurants %>%
+#   dplyr::rename(venueId = restaurantId) %>%
+#   select(venueId, maxOccupancy, location, buildingId)
+# 
+# pubs_resto <- rbind(pubs, restaurants)
+# pubs_resto_v <- left_join(pubs_resto, sales, by = 'venueId')
 
 ##### Part2 #####
 participantData <- read_csv("data/facet/Participants.csv")
@@ -1795,12 +1797,13 @@ server <- function (input, output, session) {
       filter(purpose %in% input$hBusiness_type) %>%
       #filter(date_in >= input$hDate[1] & date_in <= input$hDate[2]) %>%
       group_by(venueId) %>% 
-      summarise(total_sales = sum(spend), 
-                min_daily_sales = min(spend),
-                avg_daily_sales = mean(spend),
-                max_daily_sales = max(spend)) %>%
+      summarise(total_sales = sum(daily_sales), 
+                min_daily_sales = min(daily_sales),
+                avg_daily_sales = mean(daily_sales),
+                max_daily_sales = max(daily_sales),
+                total_visitors = sum(daily_visitors),
+                avg_daily_visitors = mean(daily_visitors)) %>%
       ungroup()
-    #%>% top_n(input$hNumber)
   })
   
   output$hplot1 <- renderPlotly({
@@ -1823,10 +1826,9 @@ server <- function (input, output, session) {
   data2 <- reactive({
     df <- sales %>% 
       filter(venueId %in% data1()$venueId) %>% 
-      #filter(date_in >= input$hDate[1] & date_in < input$hDate[2]) %>%
       mutate(YearMonth = format(as.Date(date_in), "%Y-%m")) %>%
       group_by(venueId, YearMonth) %>% 
-      summarise(monthly_sales = sum(spend))
+      summarise(monthly_sales = sum(daily_sales))
   })
   
   output$hplot2 <- renderPlotly({
@@ -1847,12 +1849,10 @@ server <- function (input, output, session) {
     req(input$hBusinessID)
     
     df <- sales %>%
-      filter(venueId %in% input$hBusinessID) %>%
-      group_by(date_in, wday_in) %>%
-      summarise(daily_sales = sum(spend)) %>%
-      mutate(wday_in = factor(wday_in,
-                              levels = c('Mon','Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')))
-
+      filter(venueId %in% input$hBusinessID)
+    # %>%
+    #   group_by(date_in, wday_in) %>%
+    #   summarise(daily_sales = sum(spend))
   })
   
   output$hplot3 <- renderPlotly({
@@ -1878,72 +1878,71 @@ server <- function (input, output, session) {
     ggplotly(p)
   })
   
-  data4 <- reactive({
-    req(input$hBusinessID)
-    df <- sales %>%
-      filter(venueId %in% input$hBusinessID) %>%
-      #filter(date_in >= input$hDate[1] & date_in < input$hDate[2]) %>%
-      group_by(venueId, date_in, wday_in, time_in) %>% 
-      summarise(customers_check_in = n()) %>%
-      group_by(venueId, wday_in, time_in) %>%
-      summarise(ave_checkin = mean(customers_check_in)) %>% na.omit
-  })
+  # data4 <- reactive({
+  #   req(input$hBusinessID)
+  #   df <- sales %>%
+  #     filter(venueId %in% input$hBusinessID) %>%
+  #     group_by(venueId, date_in, wday_in, time_in) %>% 
+  #     summarise(customers_check_in = n()) %>%
+  #     group_by(venueId, wday_in, time_in) %>%
+  #     summarise(ave_checkin = mean(customers_check_in)) %>% na.omit
+  # })
+  # 
+  # output$hplot4 <- renderPlotly({
+  #   p <-  ggplot(data4(), aes(time_in, wday_in, fill = ave_checkin)) + 
+  #     geom_tile(color = "white", size = 0.5) + 
+  #     theme_tufte(base_family = "Helvetica") + 
+  #     coord_equal() +
+  #     scale_fill_gradient(name = "# of customers",
+  #                         low = "sky blue", 
+  #                         high = "dark blue") +
+  #     #facet_wrap(~venueId, ncol = 1) +
+  #     labs(x = NULL, y = NULL, 
+  #          title = "Average Check in by weekday and time of the day") +
+  #     theme(axis.ticks = element_blank(),
+  #           axis.text.x = element_text(size = 7),
+  #           plot.title = element_text(hjust = 0.5),
+  #           legend.title = element_text(size = 8),
+  #           legend.text = element_text(size = 6) )
+  #   ggplotly(p)
+  # })
   
-  output$hplot4 <- renderPlotly({
-    p <-  ggplot(data4(), aes(time_in, wday_in, fill = ave_checkin)) + 
-      geom_tile(color = "white", size = 0.5) + 
-      theme_tufte(base_family = "Helvetica") + 
-      coord_equal() +
-      scale_fill_gradient(name = "# of customers",
-                          low = "sky blue", 
-                          high = "dark blue") +
-      #facet_wrap(~venueId, ncol = 1) +
-      labs(x = NULL, y = NULL, 
-           title = "Average Check in by weekday and time of the day") +
-      theme(axis.ticks = element_blank(),
-            axis.text.x = element_text(size = 7),
-            plot.title = element_text(hjust = 0.5),
-            legend.title = element_text(size = 8),
-            legend.text = element_text(size = 6) )
-    ggplotly(p)
-  })
+  # data5 <- reactive({
+  #   df <- pubs_resto_v %>%
+  #     filter(venueId %in% data1()$venueId) %>%
+  #     #filter(date_in >= input$hDate[1] & date_in < input$hDate[2]) %>%
+  #     group_by(venueId) %>%
+  #     summarise(total_sales = sum(spend), avg_sales = mean(spend))
+  # })
+  # 
+  # output$hplot5 <-renderPlot({
+  #   tmap_mode("plot")
+  #   tm_shape(buildings)+
+  #     tm_polygons(col = "grey60",
+  #                 size = 2,
+  #                 border.col = "black",
+  #                 border.lwd = 1) +
+  #     tm_shape(data5()) +
+  #     tm_bubbles(col = "total_sales",
+  #                palette = "Blues",
+  #                alpha = 0.8,
+  #                colorNA = "white") +
+  #     tm_layout(bg.color="white",
+  #               main.title = "Total Sales by Businesses", 
+  #               main.title.position = "center") 
+  #   
+  # })
   
-  data5 <- reactive({
-    df <- pubs_resto_v %>%
-      filter(venueId %in% data1()$venueId) %>%
-      #filter(date_in >= input$hDate[1] & date_in < input$hDate[2]) %>%
-      group_by(venueId) %>%
-      summarise(total_sales = sum(spend), avg_sales = mean(spend))
-  })
-  
-  output$hplot5 <-renderPlot({
-    tmap_mode("plot")
-    tm_shape(buildings)+
-      tm_polygons(col = "grey60",
-                  size = 2,
-                  border.col = "black",
-                  border.lwd = 1) +
-      tm_shape(data5()) +
-      tm_bubbles(col = "total_sales",
-                 palette = "Blues",
-                 alpha = 0.8,
-                 colorNA = "white") +
-      tm_layout(bg.color="white",
-                main.title = "Total Sales by Businesses", 
-                main.title.position = "center") 
-    
-  })
-  
-  data6 <- reactive({
-    df <- pubs_resto_v %>%
-      filter(purpose %in% input$hBusiness_type) %>%
-      group_by(venueId) %>%
-      summarise(total_sales = sum(spend), visitors = n()) 
+  # data6 <- reactive({
+  #   df <- sales %>%
+  #     filter(purpose %in% input$hBusiness_type) %>%
+  #     group_by(venueId) %>%
+  #     summarise(total_sales = sum(daily_sales), visitors = n()) 
       # ungroup() %>%
       # mutate(rate = total_sales/visitors) %>%
       # mutate(rate.se = sqrt((rate*(1-rate)) / (visitors))) %>%
       # filter(rate > 0)
-  })
+  # })
   
   # output$hplot6 <- renderPlotly({
   #   fit.mean <- weighted.mean(data6()$rate, 1/data6()$rate.se^2)
@@ -1989,9 +1988,9 @@ server <- function (input, output, session) {
   
   output$hplot6 <- renderPlot({
     funnel_plot(
-      numerator = data6()$total_sales,
-      denominator = as.numeric(data6()$visitors),
-      group = data6()$venueId,
+      numerator = data1()$total_sales,
+      denominator = as.numeric(data1()$total_visitors),
+      group = data1()$venueId,
       y_range = c(0,400),
       title = "Cumulative Visitors by Sales per Visitor",
       x_label = "Total Visitors",
@@ -2004,83 +2003,83 @@ server <- function (input, output, session) {
   
   ##### Workplaces #####
   
-  data7 <- reactive({
-    df <- workplaces %>% 
-      filter(Date >= input$h2Date[1] & Date <= input$h2Date[2]) %>%
-      group_by(venueId) %>% summarise(total_sales = sum(total_amt)) %>%
-      top_n(input$h2Number)
-  })
-  
-  output$hplot7 <- renderPlotly({
-    p <- ggplot(data7(),
-                aes(x=reorder(venueId, - total_sales), y= total_sales, fill=venueId)) +
-      geom_bar(stat = "identity") +
-      labs(x = "Employer ID", y = "Total Wages Paid", 
-           title = "Total Wages Paid by an Employer") +
-      theme(axis.ticks = element_blank(),
-            axis.text.x = element_text(size = 7),
-            plot.title = element_text(hjust = 0.5),
-            legend.title = element_text(size = 8),
-            legend.text = element_text(size = 6) )
-    ggplotly(p)
-  })
-  
-  data8 <- reactive({
-    df <- workplaces %>% 
-      filter(venueId %in% data7()$venueId) %>% 
-      filter(Date >= input$h2Date[1] & Date < input$h2Date[2]) %>%
-      mutate(YearMonth = format(as.Date(Date), "%Y-%m")) %>%
-      group_by(venueId, YearMonth) %>% 
-      summarise(monthly_sales = sum(total_amt))
-  })
-  
-  output$hplot8 <- renderPlotly({
-    p <- ggplot(data8(),
-                aes(x=YearMonth, y= monthly_sales, group=venueId)) +
-      geom_line(aes(color=venueId)) +
-      labs(x = "Year-Month", y = "Wages Paid", 
-           title = "Monthly Total Wages Paid by an Employer") +
-      theme(axis.ticks = element_blank(),
-            axis.text.x = element_text(size = 7),
-            plot.title = element_text(hjust = 0.5),
-            legend.title = element_text(size = 8),
-            legend.text = element_text(size = 6) )
-    ggplotly(p)
-  })
-  
-  observe({
-    updateSelectInput(session, "h2BusinessID", choices = unique(workplaces$venueId))
-  })
-  
-  data9 <- reactive({
-    df <- workplaces %>%
-      filter(venueId %in% input$h2BusinessID) %>%
-      filter(Date >= input$h2Date[1] & Date < input$h2Date[2]) %>%
-      mutate(wkday = wday(Date, label = TRUE, abbr = TRUE)) %>%
-      group_by(venueId, Date, wkday) %>%
-      summarise(daily_sales = sum(total_amt)) %>%
-      ungroup()
-  })
-  
-  output$hplot9 <- renderPlotly({
-    p <- ggbetweenstats(data = data9(), 
-                        x = wkday, 
-                        y = daily_sales, 
-                        type = "p", 
-                        mean.ci = TRUE, 
-                        pairwise.comparisons = TRUE, 
-                        pairwise.display = "s",
-                        p.adjust.method = "fdr",
-                        messages = FALSE,
-                        title = "Distribution of Total Daily Wages Paid",
-                        xlab = "Weekday",
-                        ylab = "Total Daily Wages",
-                        centrality.point.args = list(size  = 2, color = "darkred"),
-                        #centrality.label.args = list(size  = 5, color = "red"),
-                        package = "RColorBrewer",
-                        palette = "Set2")
-    ggplotly(p)
-  })
+  # data7 <- reactive({
+  #   df <- workplaces %>% 
+  #     filter(Date >= input$h2Date[1] & Date <= input$h2Date[2]) %>%
+  #     group_by(venueId) %>% summarise(total_sales = sum(total_amt)) %>%
+  #     top_n(input$h2Number)
+  # })
+  # 
+  # output$hplot7 <- renderPlotly({
+  #   p <- ggplot(data7(),
+  #               aes(x=reorder(venueId, - total_sales), y= total_sales, fill=venueId)) +
+  #     geom_bar(stat = "identity") +
+  #     labs(x = "Employer ID", y = "Total Wages Paid", 
+  #          title = "Total Wages Paid by an Employer") +
+  #     theme(axis.ticks = element_blank(),
+  #           axis.text.x = element_text(size = 7),
+  #           plot.title = element_text(hjust = 0.5),
+  #           legend.title = element_text(size = 8),
+  #           legend.text = element_text(size = 6) )
+  #   ggplotly(p)
+  # })
+  # 
+  # data8 <- reactive({
+  #   df <- workplaces %>% 
+  #     filter(venueId %in% data7()$venueId) %>% 
+  #     filter(Date >= input$h2Date[1] & Date < input$h2Date[2]) %>%
+  #     mutate(YearMonth = format(as.Date(Date), "%Y-%m")) %>%
+  #     group_by(venueId, YearMonth) %>% 
+  #     summarise(monthly_sales = sum(total_amt))
+  # })
+  # 
+  # output$hplot8 <- renderPlotly({
+  #   p <- ggplot(data8(),
+  #               aes(x=YearMonth, y= monthly_sales, group=venueId)) +
+  #     geom_line(aes(color=venueId)) +
+  #     labs(x = "Year-Month", y = "Wages Paid", 
+  #          title = "Monthly Total Wages Paid by an Employer") +
+  #     theme(axis.ticks = element_blank(),
+  #           axis.text.x = element_text(size = 7),
+  #           plot.title = element_text(hjust = 0.5),
+  #           legend.title = element_text(size = 8),
+  #           legend.text = element_text(size = 6) )
+  #   ggplotly(p)
+  # })
+  # 
+  # observe({
+  #   updateSelectInput(session, "h2BusinessID", choices = unique(workplaces$venueId))
+  # })
+  # 
+  # data9 <- reactive({
+  #   df <- workplaces %>%
+  #     filter(venueId %in% input$h2BusinessID) %>%
+  #     filter(Date >= input$h2Date[1] & Date < input$h2Date[2]) %>%
+  #     mutate(wkday = wday(Date, label = TRUE, abbr = TRUE)) %>%
+  #     group_by(venueId, Date, wkday) %>%
+  #     summarise(daily_sales = sum(total_amt)) %>%
+  #     ungroup()
+  # })
+  # 
+  # output$hplot9 <- renderPlotly({
+  #   p <- ggbetweenstats(data = data9(), 
+  #                       x = wkday, 
+  #                       y = daily_sales, 
+  #                       type = "p", 
+  #                       mean.ci = TRUE, 
+  #                       pairwise.comparisons = TRUE, 
+  #                       pairwise.display = "s",
+  #                       p.adjust.method = "fdr",
+  #                       messages = FALSE,
+  #                       title = "Distribution of Total Daily Wages Paid",
+  #                       xlab = "Weekday",
+  #                       ylab = "Total Daily Wages",
+  #                       centrality.point.args = list(size  = 2, color = "darkred"),
+  #                       #centrality.label.args = list(size  = 5, color = "red"),
+  #                       package = "RColorBrewer",
+  #                       palette = "Set2")
+  #   ggplotly(p)
+  # })
   
   ##### Workplaces v2#####
   
