@@ -2,7 +2,7 @@
 packages = c('shiny','bslib','tidyverse','plotly','tmap','sf','shinythemes','ggplot2',
              'lubridate','gapminder','dplyr','ggdist','gganimate','reshape',
              'reshape2','scales','hrbrthemes','ggstatsplot','RColorBrewer','sftime',
-             'ggthemes','FunnelPlotR','tools')
+             'ggthemes','FunnelPlotR','tools','rPackedBar','gt','gtExtras')
 
 for(p in packages){
   if(!require(p, character.only =T)){
