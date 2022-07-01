@@ -1,3 +1,4 @@
+
 packages = c('shiny','bslib','tidyverse','plotly','tmap','sf','shinythemes','ggplot2',
              'lubridate','gapminder','dplyr','ggdist','gganimate','reshape',
              'reshape2','scales','hrbrthemes','ggstatsplot','RColorBrewer','sftime',
@@ -10,16 +11,20 @@ for(p in packages){
   library(p, character.only =T)
 }
 
+
 #========================#
 #####Data Extraction######
 #========================#
 
 ##### Part1 #####
 workplaces <- read_rds("data/workplaces.rds")
-sales <- read_rds("data/sales.rds")
+jobs <- read_csv("data/Jobs.csv")
+#sales <- read_rds("data/sales.rds")
+sales <- read_rds("data/sales_r.rds")
 pubs <- read_sf("data/Pubs.csv", options = "GEOM_POSSIBLE_NAMES=location")
 restaurants <- read_sf("data/Restaurants.csv", options = "GEOM_POSSIBLE_NAMES=location")
 
+### For tmap ###
 pubs <- pubs %>%
   dplyr::rename(venueId = pubId) %>%
   select(venueId, maxOccupancy, location, buildingId)
@@ -80,83 +85,137 @@ ui <- navbarPage(
   fluid = TRUE,
   theme=shinytheme("flatly"),
   id = "navbarID",
-  tabPanel("Introduction"),
+  tabPanel("Introduction", 
+           #titlePanel("Welcome to our app!"),
+           mainPanel(
+             HTML("<h1>Instructions For Use</h1>"), 
+             HTML("<p></p>"),
+             HTML("<h4>The tabs have been arranged sequentially to asnwer the questions in the 2022 IEEE VAST Challenge."), 
+             HTML("For a recap on the challenge, please visit <a href='https://isss608group4.netlify.app/introduction.html'>here.</a></h4>"), 
+             HTML("<p></p>"),
+             HTML("<h4>There are also instructions and guidance on how to use each tab and the sub-tabs attached to the controls."),
+             HTML("For further clarification, please visit <a href='https://isss608group4.netlify.app/proposal'>here.</a></h4>"), 
+             HTML("<p></p>"),
+             HTML("<h4>Lastly, we've also taken a crack at the challenge."),
+             HTML("Visit <a href=''>here</a> to check out our solution.</h4>"), 
+             HTML("<p></p>"),
+             HTML("<h4>Thank you, and we hope that you have as much fun using this R Shiny App as we did creating it.</h4>"),
+           )),
   navbarMenu("Business Performance",
-             tabPanel("Pubs & Restaurants",
+             tabPanel("By Revenue",
                       sidebarPanel(
                         radioButtons(inputId = "hBusiness_type",
                                      label = "Category",
                                      choices = c("Pubs" = "Recreation (Social Gathering)",
                                                  "Restaurants" = "Eating"),
                                      selected = "Recreation (Social Gathering)"),
-                        
-                        HTML("<p>To view top n businesses, select n > 0.</p>"),
-                        HTML("<p>To view bottom n businesses, select n < 0.</p>"),
-                        sliderInput(inputId = "hNumber",
-                                    label = "Scenario",
-                                    min = -10,
-                                    max = 10,
-                                    value = 5),
-                        # selectInput(inputId = "Case",
+                        # HTML("<p>To view top n businesses, select n > 0.</p>"),
+                        # HTML("<p>To view bottom n businesses, select n < 0.</p>"),
+                        # sliderInput(inputId = "hNumber",
                         #             label = "Scenario",
-                        #             choices = list("Top 5" = 5,
-                        #                            "Top 10" = 10,
-                        #                            "Bottom 5" = -5,
-                        #                            "Bottom 10" = -10)),
-                        
-                        dateRangeInput(inputId = "hDate",
-                                       label = "Select Date Range:",
-                                       start = "2022-03-01",
-                                       end = "2023-03-01"),
-                        
-                        HTML("<p>To deep dive on the weekday sales pattern, select a venueID.</p>"),
+                        #             min = -10,
+                        #             max = 10,
+                        #             value = 5),
+                        # dateRangeInput(inputId = "hDate",
+                        #                label = "Select Date Range:",
+                        #                start = "2022-03-01",
+                        #                end = "2023-03-01"),
+                        HTML("<p> </p>"),
+                        HTML("<p>Select a venueID and the available options to view the daily sales distribution across the weekdays.</p>"),
                         selectInput(inputId = "hBusinessID",
                                     label = "VenueID",
-                                    "venueID")),
+                                    "venueID"),
+                        selectInput(inputId = "hPlotType",
+                                    label = "Type of plot",
+                                    choices = c("Box" = "box",
+                                                "Violin" = "violin",
+                                                "Box-Violin" = "boxviolin"),
+                                    selected = "boxviolin"),
+                        selectInput(inputId = "hTestType",
+                                    label = "Test Type",
+                                    choices = c("Parametric" = "p",
+                                                "Non-parametric" = "np",
+                                                "Robust" = "r",
+                                                "Bayes Factor" = "bf"),
+                                    selected = "p"),
+                        selectInput(inputId = "hPairwiseDis",
+                                    label  = "Pairwise Display",
+                                    choices = c("Only significant" = "s",
+                                                "Only non-significant" = "ns",
+                                                "Everything" = "all"),
+                                    selected = "s"),
+                        selectInput(inputId = "hPAdjust",
+                                    label  = "P Adjust Methods",
+                                    choices = c("Holm" = "holm",
+                                                "Hochberg" = "hochberg",
+                                                "Hommel" = "hommel",
+                                                "Bonferroni" = "bonferroni",
+                                                "BH" = "BH",
+                                                "BY" = "BY",
+                                                "FDR" = "fdr",
+                                                "None" = "none"),
+                                    selected = "fdr"),
+                        ),
                       
                       mainPanel(
                         splitLayout(
                          plotlyOutput("hplot1"),
-                         plotlyOutput("hplot2")),
-                        
-                        HTML("<h3>Total Sales by venueId</h3>"),
+                         plotOutput("hplot6")),
+                        HTML("<p> </p>"),
+                        HTML("<p> </p>"),
+                        HTML("<p> </p>"),
                         splitLayout(
-                          tmapOutput("hplot5"),
-                          plotOutput("hplot6")),
+                        plotOutput("hplot5"),
+                        gt_output("hplot2a")),
                         
                         splitLayout(
-                         plotlyOutput("hplot3"),
-                         plotlyOutput("hplot4")),
+                         plotOutput("hplot3"),
+                         #plotlyOutput("hplot4")
+                         ),
 
                         )),
-             tabPanel("Workplaces",
+             tabPanel("By Wages",
                       sidebarPanel(
-                        HTML("<p>To view top n businesses, select n > 0.</p>"),
-                        HTML("<p>To view bottom n businesses, select n < 0.</p>"),
-                        sliderInput(inputId = "h2Number",
-                                    label = "Scenario",
-                                    min = -10,
-                                    max = 10,
-                                    value = 5),
-                        
-                        dateRangeInput(inputId = "h2Date",
-                                       label = "Select Date Range:",
-                                       start = "2022-03-01",
-                                       end = "2023-03-01"),
-                        
-                        HTML("<p>To deep dive on the weekday sales pattern, select a venueID.</p>"),
-                        numericInput(inputId = "h2BusinessID",
-                                    label = "VenueID",
-                                    "venueID")),
+                        # selectInput(inputId = "hEduLvl",
+                        #              label = "Education Level",
+                        #             choices = c("Low" = "Low",
+                        #                         "High School Or College" = "HighSchoolOrCollege",
+                        #                         "Bachelors" = "Bachelors",
+                        #                         "Graduate" = "Graduate",
+                        #                         "All" = jobs$educationRequirement),
+                        #             selected = "Low"),
+                        selectInput(inputId = "hEduLvl",
+                                     label = "Education Level",
+                                    choices = c("Low",
+                                                "High School Or College" = "HighSchoolOrCollege",
+                                                "Bachelors",
+                                                "Graduate",
+                                                "All"),
+                                    selected = "Low"),
+                        HTML("<p>Select the available options to view the average hourly wages distribution for all employers.</p>"),
+                        selectInput(inputId = "h2PlotType",
+                                    label = "Type of plot",
+                                    choices = c("Box" = "box",
+                                                "Violin" = "violin",
+                                                "Box-Violin" = "boxviolin"),
+                                    selected = "boxviolin"),
+                        selectInput(inputId = "h2TestType",
+                                    label = "Test Type",
+                                    choices = c("Parametric" = "p",
+                                                "Non-parametric" = "np",
+                                                "Robust" = "r",
+                                                "Bayes Factor" = "bf"),
+                                    selected = "p")
+                        ),
                       
                       mainPanel(
-                        splitLayout(
-                          plotlyOutput("hplot7"),
-                          plotlyOutput("hplot8")),
-                        splitLayout(
-                          plotlyOutput("hplot9"))
-                      )
-             )),
+                          splitLayout(
+                            plotlyOutput("hplot10"),
+                            plotlyOutput("hplot12a")),
+                          DT::dataTableOutput("dplot10")
+                          #plotlyOutput("hplot11"),
+                          )
+                      )),
   
   
   navbarMenu("Income and Expense",
@@ -1733,32 +1792,81 @@ server <- function (input, output, session) {
     
   })
   
-  ##### Pubs & Restaurants #####
+  ##### By revenue #####
   
   data1 <- reactive({
     req(input$hBusiness_type)
-    df <- sales %>% filter(purpose %in% input$hBusiness_type) %>%
-      filter(date_in >= input$hDate[1] & date_in <= input$hDate[2]) %>%
-      group_by(venueId) %>% summarise(total_sales = sum(spend)) %>%
-      top_n(input$hNumber)
+    df <- sales %>% 
+      filter(purpose %in% input$hBusiness_type) %>%
+      group_by(venueId) %>% 
+      summarise(total_sales = sum(daily_sales), 
+                min_daily_sales = min(daily_sales),
+                avg_daily_sales = mean(daily_sales),
+                max_daily_sales = max(daily_sales),
+                total_visitors = sum(daily_visitors),
+                avg_daily_visitors = mean(daily_visitors)) %>%
+      ungroup()
   })
   
   output$hplot1 <- renderPlotly({
-    p <- ggplot(data1(),
-                aes(x=reorder(venueId, - total_sales), y= total_sales, fill=venueId)) +
-      geom_bar(stat = "identity") +
-      labs(x = "Business ID" , y = "Total Sales", 
-           title = "Top Overall Performing Business")
-    ggplotly(p)
+    # p <- ggplot(data1(),
+    #             aes(x=reorder(venueId, - total_sales), y= total_sales)) +
+    #   geom_bar(stat = "identity", fill = "navy blue") +
+    #   labs(x = "Business ID" , y = "Total Sales",
+    #        title = "Top Overall Performing Businesses") +
+    #   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    # ggplotly(p)
+    plot_ly(data = data1(),
+            x = ~ venueId,
+            y = ~ total_sales,
+            type ="bar")  %>% 
+      layout(xaxis = list(categoryorder = "total descending"))
   })
   
+  output$dplot1 <- DT::renderDataTable({
+    DT::datatable(data = data1(),
+                  filter = 'top',
+                  rownames = TRUE,
+                  options = list(lengthMenu = c(5,10,20), pageLength = 5)
+    )
+  }) 
+  
+
   data2 <- reactive({
     df <- sales %>% 
       filter(venueId %in% data1()$venueId) %>% 
-      filter(date_in >= input$hDate[1] & date_in < input$hDate[2]) %>%
       mutate(YearMonth = format(as.Date(date_in), "%Y-%m")) %>%
       group_by(venueId, YearMonth) %>% 
-      summarise(monthly_sales = sum(spend))
+      summarise(monthly_sales = sum(daily_sales))
+  })
+  
+
+  
+  data2a <- reactive({
+    df <- sales %>% 
+      filter(venueId %in% data1()$venueId) %>% 
+      mutate(YearMonth = format(as.Date(date_in), "%Y-%m")) %>%
+      group_by(venueId, YearMonth) %>% 
+      summarise(monthly_sales = sum(daily_sales))%>%
+      ungroup()
+      
+  })
+  
+  output$hplot2a <- render_gt({
+    spark <- data2a() %>%
+      group_by(venueId) %>%
+      summarize('Monthly Sales' = list(monthly_sales), 
+                .groups = "drop")
+    sales_fig <- data2a() %>%
+      group_by(venueId) %>%
+      summarise("Min" = min(monthly_sales, na.rm = T),
+                "Max" = max(monthly_sales, na.rm = T),
+                "Average" = mean(monthly_sales, na.rm = T))
+    
+    sales_data <- left_join(sales_fig, spark) %>%
+      gt() %>%
+      gt_plt_sparkline('Monthly Sales')
+    
   })
   
   output$hplot2 <- renderPlotly({
@@ -1772,194 +1880,188 @@ server <- function (input, output, session) {
   
   ### to list down the venue dynamically for hplot3 and hplot4 ###
   observe({
-    updateSelectInput(session, "hBusinessID", choices = unique(sales$venueId))
+    updateSelectInput(session, "hBusinessID", choices = sort(as.numeric(unique(data1()$venueId))))
   })
   
   data3 <- reactive({
     req(input$hBusinessID)
-    df <- sales %>%
+    
+    df <- data.frame(sales) %>%
       filter(venueId %in% input$hBusinessID) %>%
-      filter(date_in >= input$hDate[1] & date_in < input$hDate[2]) %>%
-      group_by(venueId, date_in, wday_in) %>%
-      summarise(daily_sales = sum(spend)) %>%
-      ungroup()
+      select(venueId,wday_in,daily_sales)
+    # %>%
+    #   group_by(date_in, wday_in) %>%
+    #   summarise(daily_sales = sum(spend))
   })
   
-  output$hplot3 <- renderPlotly({
-    # d <- event_data("plotly_click")
-    # if(is.null(d)) return(NULL)
-    p <- ggbetweenstats(data = data3(), 
-                        x = wday_in, 
-                        y = daily_sales, 
-                        type = "p", 
-                        mean.ci = TRUE, 
-                        pairwise.comparisons = TRUE, 
-                        pairwise.display = "s",
-                        p.adjust.method = "fdr",
+  output$hplot3 <- renderPlot({
+  ggbetweenstats(data = data3(),
+                        x = wday_in,
+                        y = daily_sales,
+                        type = input$hTestType,
+                        plot.type = input$hPlotType,
+                        mean.ci = TRUE,
+                        # pairwise.comparisons = input$hPairwiseCom,
+                        pairwise.display = input$hPairwiseDis,
+                        p.adjust.method = input$hPAdjust,
                         messages = FALSE,
-                        title = "Distribution of Weekday Sales",
+                        title = "Distribution of Daily Sales by Weekday",
                         xlab = "Weekday",
                         ylab = "Daily Sales Amount",
                         centrality.point.args = list(size  = 2, color = "darkred"),
                         #centrality.label.args = list(size  = 5, color = "red"),
                         package = "RColorBrewer",
-                        palette = "Set2")
-    ggplotly(p)
+                        palette = "Paired")
+      
+
   })
   
-  data4 <- reactive({
-    req(input$hBusinessID)
-    df <- sales %>%
-      filter(venueId %in% input$hBusinessID) %>%
-      filter(date_in >= input$hDate[1] & date_in < input$hDate[2]) %>%
-      group_by(venueId, date_in, wday_in, time_in) %>% 
-      summarise(customers_check_in = n()) %>%
-      group_by(venueId, wday_in, time_in) %>%
-      summarise(ave_checkin = mean(customers_check_in)) %>% na.omit
-  })
-  
-  output$hplot4 <- renderPlotly({
-    p <-  ggplot(data4(), aes(time_in, wday_in, fill = ave_checkin)) + 
-      geom_tile(color = "white", size = 0.5) + 
-      theme_tufte(base_family = "Helvetica") + 
-      coord_equal() +
-      scale_fill_gradient(name = "# of customers",
-                          low = "sky blue", 
-                          high = "dark blue") +
-      #facet_wrap(~venueId, ncol = 1) +
-      labs(x = NULL, y = NULL, 
-           title = "Average Check in by weekday and time of the day") +
-      theme(axis.ticks = element_blank(),
-            axis.text.x = element_text(size = 7),
-            plot.title = element_text(hjust = 0.5),
-            legend.title = element_text(size = 8),
-            legend.text = element_text(size = 6) )
-    ggplotly(p)
-  })
+  # data4 <- reactive({
+  #   req(input$hBusinessID)
+  #   df <- sales %>%
+  #     filter(venueId %in% input$hBusinessID) %>%
+  #     group_by(venueId, date_in, wday_in, time_in) %>% 
+  #     summarise(customers_check_in = n()) %>%
+  #     group_by(venueId, wday_in, time_in) %>%
+  #     summarise(ave_checkin = mean(customers_check_in)) %>% na.omit
+  # })
+  # 
+  # output$hplot4 <- renderPlotly({
+  #   p <-  ggplot(data4(), aes(time_in, wday_in, fill = ave_checkin)) + 
+  #     geom_tile(color = "white", size = 0.5) + 
+  #     theme_tufte(base_family = "Helvetica") + 
+  #     coord_equal() +
+  #     scale_fill_gradient(name = "# of customers",
+  #                         low = "sky blue", 
+  #                         high = "dark blue") +
+  #     #facet_wrap(~venueId, ncol = 1) +
+  #     labs(x = NULL, y = NULL, 
+  #          title = "Average Check in by weekday and time of the day") +
+  #     theme(axis.ticks = element_blank(),
+  #           axis.text.x = element_text(size = 7),
+  #           plot.title = element_text(hjust = 0.5),
+  #           legend.title = element_text(size = 8),
+  #           legend.text = element_text(size = 6) )
+  #   ggplotly(p)
+  # })
   
   data5 <- reactive({
     df <- pubs_resto_v %>%
       filter(venueId %in% data1()$venueId) %>%
-      filter(date_in >= input$hDate[1] & date_in < input$hDate[2]) %>%
       group_by(venueId) %>%
-      summarise(total_sales = sum(spend))
+      summarise(total_sales = sum(daily_sales))
   })
-  
-  output$hplot5 <-renderTmap({
+
+  output$hplot5 <-renderPlot({
+    tmap_mode("plot")
     tm_shape(buildings)+
       tm_polygons(col = "grey60",
                   size = 2,
                   border.col = "black",
                   border.lwd = 1) +
       tm_shape(data5()) +
-      tm_bubbles(col = "red",
-                 size = "total_sales",
-                 alpha = 0.3) +
+      tm_bubbles(col = "total_sales",
+                 palette = "Blues",
+                 alpha = 0.8,
+                 colorNA = "white") +
       tm_layout(bg.color="white",
-                main.title = "Total Sales by Businesses", 
+                main.title = "Total Sales by Businesses",
                 main.title.position = "center")
+
   })
   
-  data6 <- reactive({
-    df <- pubs_resto_v %>%
-      filter(purpose %in% input$hBusiness_type) %>%
-      filter(date_in >= input$hDate[1] & date_in < input$hDate[2]) %>%
-      group_by(venueId) %>%
-      summarise(total_sales = sum(spend), visitors = n())
-  })
-  
+
   output$hplot6 <- renderPlot({
     funnel_plot(
-      numerator = data6()$total_sales,
-      denominator = data6()$visitors,
-      group = data6()$venueId,
-      y_range = c(10,25),
-      title = "Cumulative Sales by Cumulative Visitors",           
-      x_label = "Total Sales", 
-      y_label = "Total Visitors" 
+      numerator = data1()$avg_daily_sales,
+      denominator = data1()$avg_daily_visitors,
+      group = data1()$venueId,
+      y_range = c(0,350),
+      title = "Cumulative Visitors by Sales per Visitor",
+      x_label = "Average Daily Visitors",
+      y_label = "Average Daily Sales per Visitor"
+    )
+  })
+
+  ##### By Wages #####
+  
+  data10 <- reactive({
+    df <- if(input$hEduLvl == "All"){
+      jobs %>%
+        mutate(employerId = as.factor(employerId))  %>%
+        group_by(employerId, educationRequirement) %>% 
+        summarise(jobsno = n(),
+                  avg_hourly_pay = round(mean(hourlyRate),2),
+                  total_hourly_pay = sum(hourlyRate))}
+    else{jobs %>%
+        filter(educationRequirement == input$hEduLvl) %>%
+        mutate(employerId = as.factor(employerId))  %>%
+      group_by(employerId, educationRequirement) %>% 
+      summarise(jobsno = n(),
+                avg_hourly_pay = round(mean(hourlyRate),2),
+                total_hourly_pay = sum(hourlyRate))}
+  })
+  
+  output$hplot10 <- renderPlotly({
+    plotly_packed_bar(input_data = data10(), 
+                      label_column = 'employerId',
+                      value_column = 'avg_hourly_pay',
+                      number_rows = 10,
+                      plot_title = 'Top 10 Average Hourly Pay by Education Level', 
+                      xaxis_label = 'Average Hourly Pay',
+                      hover_label = 'Average Hourly Pay',
+                      min_label_width = 0.001,
+                      label_color = 'white') 
+  })
+  output$dplot10 <- DT::renderDataTable({
+    DT::datatable(data = data10(),
+                  filter = 'top',
+                  rownames = TRUE,
+                  options = list(lengthMenu = c(5,10,20,50), pageLength = 5)
     )
   })
   
-  ##### Workplaces #####
-  
-  data7 <- reactive({
-    df <- workplaces %>% 
-      filter(Date >= input$h2Date[1] & Date <= input$h2Date[2]) %>%
-      group_by(venueId) %>% summarise(total_sales = sum(total_amt)) %>%
-      top_n(input$h2Number)
+  output$hplot11 <- renderPlotly({
+    plotly_packed_bar(input_data = data10(), 
+                      label_column = 'employerId',
+                      value_column = 'total_hourly_pay',
+                      number_rows = 10,
+                      plot_title = 'Top 10 Total Hourly Pay Employers Offer by Education Level', 
+                      xaxis_label = 'Total Hourly Pay',
+                      hover_label = 'Total Hourly Pay',
+                      min_label_width = 0.001,
+                      color_bar_color = '#66cdaa',
+                      label_color = 'white') 
   })
   
-  output$hplot7 <- renderPlotly({
-    p <- ggplot(data7(),
-                aes(x=reorder(venueId, - total_sales), y= total_sales, fill=venueId)) +
-      geom_bar(stat = "identity") +
-      labs(x = "Employer ID", y = "Total Wages Paid", 
-           title = "Total Wages Paid by an Employer") +
-      theme(axis.ticks = element_blank(),
-            axis.text.x = element_text(size = 7),
-            plot.title = element_text(hjust = 0.5),
-            legend.title = element_text(size = 8),
-            legend.text = element_text(size = 6) )
+
+  # output$hplot12 <- renderPlotly({
+  #   p <- ggbetweenstats(data = data10(), 
+  #                       x = educationRequirement, 
+  #                       y = avg_hourly_pay,
+  #                       type = input$h2TestType, 
+  #                       plot.type = input$h2PlotType,
+  #                       mean.ci = TRUE, 
+  #                       messages = FALSE,
+  #                       title = "Distribution of Average Hourly Wages Offered by Employer",
+  #                       xlab = "Education Level",
+  #                       ylab = "Average Hourly Wages",
+  #                       centrality.point.args = list(size  = 2, color = "darkred"),
+  #                       package = "RColorBrewer",
+  #                       palette = "Paired") 
+  #   ggplotly(p)
+  # })
+
+  output$hplot12a <- renderPlotly({
+    p <- ggplot(data = data10(), aes(x = educationRequirement, y = avg_hourly_pay)) +
+      geom_boxplot()
+      # geom_dotplot(stackdir = "center", binaxis = 'y', dotsize = 0.5) +
+      # scale_y_continuous()
+    
     ggplotly(p)
   })
+
   
-  data8 <- reactive({
-    df <- workplaces %>% 
-      filter(venueId %in% data7()$venueId) %>% 
-      filter(Date >= input$h2Date[1] & Date < input$h2Date[2]) %>%
-      mutate(YearMonth = format(as.Date(Date), "%Y-%m")) %>%
-      group_by(venueId, YearMonth) %>% 
-      summarise(monthly_sales = sum(total_amt))
-  })
-  
-  output$hplot8 <- renderPlotly({
-    p <- ggplot(data8(),
-                aes(x=YearMonth, y= monthly_sales, group=venueId)) +
-      geom_line(aes(color=venueId)) +
-      labs(x = "Year-Month", y = "Wages Paid", 
-           title = "Monthly Total Wages Paid by an Employer") +
-      theme(axis.ticks = element_blank(),
-            axis.text.x = element_text(size = 7),
-            plot.title = element_text(hjust = 0.5),
-            legend.title = element_text(size = 8),
-            legend.text = element_text(size = 6) )
-    ggplotly(p)
-  })
-  
-  observe({
-    updateSelectInput(session, "h2BusinessID", choices = unique(workplaces$venueId))
-  })
-  
-  data9 <- reactive({
-    #req(input$hBusinessID)
-    df <- workplaces %>%
-      filter(venueId %in% input$h2BusinessID) %>%
-      filter(Date >= input$h2Date[1] & Date < input$h2Date[2]) %>%
-      mutate(wkday = wday(Date, label = TRUE, abbr = TRUE)) %>%
-      group_by(venueId, Date, wkday) %>%
-      summarise(daily_sales = sum(total_amt)) %>%
-      ungroup()
-  })
-  
-  output$hplot9 <- renderPlotly({
-    p <- ggbetweenstats(data = data9(), 
-                        x = wkday, 
-                        y = daily_sales, 
-                        type = "p", 
-                        mean.ci = TRUE, 
-                        pairwise.comparisons = TRUE, 
-                        pairwise.display = "s",
-                        p.adjust.method = "fdr",
-                        messages = FALSE,
-                        title = "Distribution of Total Daily Wages Paid",
-                        xlab = "Weekday",
-                        ylab = "Total Daily Wages",
-                        centrality.point.args = list(size  = 2, color = "darkred"),
-                        #centrality.label.args = list(size  = 5, color = "red"),
-                        package = "RColorBrewer",
-                        palette = "Set2")
-    ggplotly(p)
-  })
 }
 
 shinyApp(ui, server)
