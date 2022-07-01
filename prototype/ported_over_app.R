@@ -1,25 +1,14 @@
-library(shiny)
-library(bslib)
-library(tidyverse)
-library(plotly)
-library(tmap)
-library(sf)
-library(trelliscopejs)
-library(shinythemes)
-library(ggplot2)
-library(gapminder)
-library(lubridate)
-library(dplyr)
-library(ggdist)
-library(reshape)
-library(reshape2)
-library(scales)
-library(hrbrthemes)
-library(ggstatsplot)
-library(RColorBrewer)
-library(sftime)
-library(ggthemes)
-library(FunnelPlotR)
+packages = c('shiny','bslib','tidyverse','plotly','tmap','sf','shinythemes','ggplot2',
+             'lubridate','gapminder','dplyr','ggdist','gganimate','reshape',
+             'reshape2','scales','hrbrthemes','ggstatsplot','RColorBrewer','sftime',
+             'ggthemes','FunnelPlotR','tools')
+
+for(p in packages){
+  if(!require(p, character.only =T)){
+    install.packages(p)
+  }
+  library(p, character.only =T)
+}
 
 #========================#
 #####Data Extraction######
@@ -73,10 +62,14 @@ Count_Checkin_Monthly <- read_sf("data/Count_Checkin_Monthly.csv",
 Count_Checkin_Weekday <- read_sf("data/Count_Checkin_Weekday.csv", 
                                  options = "GEOM_POSSIBLE_NAMES=location") 
 
-Count_Checkin_Daily$Num_of_Employees <- as.numeric(Count_Checkin_Daily$Num_of_Employees)
-Count_Checkin_Weekly$Num_of_Employees <- as.numeric(Count_Checkin_Weekly$Num_of_Employees)
-Count_Checkin_Weekday$Num_of_Employees <- as.numeric(Count_Checkin_Weekday$Num_of_Employees)
-Count_Checkin_Monthly$Num_of_Employees <- as.numeric(Count_Checkin_Monthly$Num_of_Employees)
+Count_Checkin_Daily <- Count_Checkin_Daily %>% mutate_at(c(3:8), as.numeric)
+Count_Checkin_Weekly <- Count_Checkin_Weekly %>% mutate_at(c(3:8), as.numeric)
+Count_Checkin_Weekday <- Count_Checkin_Weekday %>% mutate_at(c(3:8), as.numeric)
+Count_Checkin_Monthly <- Count_Checkin_Monthly %>% mutate_at(c(3:8), as.numeric)
+
+Jobs <- read_csv("data/Jobs.csv")
+Employers <- read_csv("data/Employers.csv")
+
 
 #========================#
 ######   Shiny UI   ######
@@ -328,78 +321,112 @@ ui <- navbarPage(
                           )
              )),
   
-
-                        
   navbarMenu("Employer",
              tabPanel("Map View", 
               sidebarPanel(width = 3,
                HTML("<h3>Input General Parameters</h3>"),
-               selectInput("period", label = "Choose Time Period to View", choices = c("Daily", "Weekly", "Weekday", "Monthly")),
+               #selectInput("period", label = "Choose Time Period to View", choices = c("Daily", "Weekly", "Weekday", "Monthly")),
+               selectInput("period", 
+                           label = "Choose Time Period to View", 
+                           choices = list("Daily" = "Date", 
+                                          "Weekly" = "weekNum", 
+                                          "Monthly" = "yearMonth",
+                                          "Weekday" = "Weekday"),
+                           selected = c("weekNum")),
                selectInput("employee", label = "Choose Number of Employees Employed by Each Employer", choices = c("See All")),
                selectInput("job", label = "Choose Number of Jobs Offered by Each Employer", choices = c("See All")),
                HTML("<b>Choose Hiring Rate<sup>1</sup> of Each Employer</b>"),
                selectInput("hired", label = " ", choices = c("See All")),
                HTML("<h6><sup>1</sup>Hiring Rate = Number of Employees Employed / Number of Jobs Offered</h6>"),
-               checkboxGroupInput("pay", label = "Choose At Least 1 Average Pay Given by Each Employer", 
+               selectInput("computepay", label = "Pay Given by Each Employer", 
+                                  choices = list("Minimum" = "minPay", 
+                                                 "Maximum" = "maxPay", 
+                                                 "Average" = "avgPay",
+                                                 "Median" = "medPay"),
+                                  selected = "avgPay"),
+               checkboxGroupInput("pay", label = "Select At Least 1 Pay Group Category", 
                                   choices = list("<=$15 (Low)" = "<=$15 (Low)", 
-                                                 "$16-35(Mid)" = "$16-35(Mid)", 
-                                                 ">$36(High)" = ">$36(High)"),
-                                  selected = c("<=$15 (Low)","$16-35(Mid)", ">$36(High)")),
-               HTML("<b>Fliter the Entire Map and Datable based on EmployerId</b>"),
+                                                 "$16-35 (Mid)" = "$16-35 (Mid)", 
+                                                 ">$36 (High)" = ">$36 (High)"),
+                                  selected = c("<=$15 (Low)","$16-35 (Mid)", ">$36 (High)")),
+               #boxplot
+               selectInput(inputId = "y_varMAP",
+                           label = "Select y-variable For Statistical Plot:",
+                           choices = c("Jobs" = "Num_of_Jobs",
+                                       "Minimum Pay" = "minPay", 
+                                       "Maximum Pay" = "maxPay", 
+                                       "Average Pay" = "avgPay",
+                                       "Median Pay" = "medPay",
+                                       "Hiring Rate" = "hiringRate"),
+                           selected = "Num_of_Jobs"),
+               selectInput(inputId = "stat_testMAP",
+                           label = "Type of Statistical Test:",
+                           choices = c("Parametric" = "p",
+                                       "Nonparametric" = "np",
+                                       "Robust" = "r",
+                                       "Bayes Factor" = "bf"),
+                           selected = "p"),
+               selectInput(inputId = "plot_typeMAP",
+                           label = "Type of Plot:",
+                           choices = c("Box-Violin" = "boxviolin",
+                                       "Box" = "box",
+                                       "Violin" = "violin"),
+                           selected = "boxviolin"),
+               
+               HTML("<b>Fliter the Entire Page based on EmployerId</b>"),
                HTML("<h6> Use comma (,) to select multiple employers.</h6>"),
                textInput("eid", label = " ", value = "",placeholder = "eg. 379,862,884"),
                textInput(inputId = "input_title", label = "Map title", placeholder = "Enter text to be used as map title")),
              mainPanel(width =9,
-                HTML("<h3>Interactive City Map View</h3>"),
-                HTML("<p> This map shows number of employees employed by each employer. 
-                    If there are no corresponding data from the selected parameters, an error message will be displayed. </p>"),
+                HTML("<h3 style = 'text-align:center'>Interactive City Map View</h3><br>"),
+                splitLayout(cellWidths = c("45%", "55%"),
+                HTML("<p style = 'text-align:center'> This map shows the location of each employer and <br>the number of employees employed by them. </p><br>"),
+                HTML("<p style = 'text-align:center'> This plot shows distribution of employees employed <br>by each employer with other factors. </p><br>")
+                ),
+                HTML("<p style = 'text-align:center'>If there are no corresponding data from the selected parameters, an error message will be displayed. </p><br>"),
                 textOutput("map_title"),
-               tmapOutput("plot1"),
-               DT::dataTableOutput("aTable")
-             )),
-             tabPanel("Hiring Rate", 
-              mainPanel(
-                HTML("<h3>Hiring Rate of Each Employer</h3>"),
-                trelliscopeOutput("HiringRate",width = "100%", height = "400px"),
-                plotOutput("test")
-             )),
+                splitLayout(cellWidths = c("45%", "55%"),
+                  tmapOutput("plot1", height = 800),
+                  plotOutput('mapbox', height = 800)),
+             ),
+             DT::dataTableOutput("aTable")
+             ),
              tabPanel("Turnover Rate", 
               sidebarPanel(width = 3,
                  HTML("<h3>Input General Parameters</h3>"),
-                
                  selectInput("change_filter", label = "Choose Time Period to View", choices = c("See All", "Date", "Week", "Month")), 
                  selectInput("change_value", label = "Refine Time Period", choices = c("See All")),
-                             selectInput(inputId = "x_var",
-                                         label = "Select x-variable:",
-                                         choices = c("Household Size" = "householdSize",
-                                                     "Have Kids?" = "haveKids",
-                                                     "Education" = "educationLevel",
-                                                     "Interest Group" = "interestGroup",
-                                                     "No. of Employers/Employees" = "NumEmployees.Employers"),
-                                         selected = "educationLevel"),
-                             selectInput(inputId = "y_var",
-                                         label = "Select y-variable:",
-                                         choices = c("Joviality" = "joviality",
-                                                     "Age" = "age",
-                                                     "No. of Employers/Employees" = "NumEmployees.Employers"),
-                                         selected = "joviality"),
-                             selectInput(inputId = "stat_test",
-                                         label = "Type of statistical test:",
-                                         choices = c("Parametric" = "p",
-                                                     "Nonparametric" = "np",
-                                                     "Robust" = "r",
-                                                     "Bayes Factor" = "bf"),
-                                         selected = "p"),
-                             selectInput(inputId = "plot_type",
-                                         label = "Type of plot:",
-                                         choices = c("Box-Violin" = "boxviolin",
-                                                     "Box" = "box",
-                                                     "Violin" = "violin"),
-                                         selected = "boxviolin"),
-                             textInput(inputId = "plot_title",
-                                       label = "Plot title",
-                                       placeholder = "Enter text to be used as plot title"),
-                             actionButton(inputId = "update_title", "Update Title")
+                 selectInput(inputId = "x_var",
+                      label = "Select x-variable:",
+                      choices = c("Household Size" = "householdSize",
+                                    "Have Kids?" = "haveKids",
+                                    "Education" = "educationLevel",
+                                    "Interest Group" = "interestGroup",
+                                    "No. of Employers/Employees" = "NumEmployees.Employers"),
+                      selected = "educationLevel"),
+                 selectInput(inputId = "y_var",
+                      label = "Select y-variable:",
+                      choices = c("Joviality" = "joviality",
+                                  "Age" = "age",
+                                  "No. of Employers/Employees" = "NumEmployees.Employers"),
+                      selected = "joviality"),
+                 selectInput(inputId = "stat_test",
+                      label = "Type of Statistical Test:",
+                      choices = c("Parametric" = "p",
+                                  "Nonparametric" = "np",
+                                  "Robust" = "r",
+                                  "Bayes Factor" = "bf"),
+                      selected = "p"),
+                 selectInput(inputId = "plot_type",
+                      label = "Type of Plot:",
+                      choices = c("Box-Violin" = "boxviolin",
+                                  "Box" = "box",
+                                  "Violin" = "violin"),
+                      selected = "boxviolin"),
+                textInput(inputId = "plot_title",
+                      label = "Plot title",
+                      placeholder = "Enter text to be used as plot title"),
+                      actionButton(inputId = "update_title", "Update Title")
                 ),
               mainPanel(width = 9,
                splitLayout( 
@@ -414,8 +441,8 @@ ui <- navbarPage(
                  plotOutput("stats_job",
                              height = "500px")
                )
-             ))
-  )
+             )
+  ))
 )
 
 #========================#
@@ -427,6 +454,7 @@ server <- function (input, output, session) {
   
   
   #############   Employer - Map View   #########################
+ 
   selected_period <- reactive({
     if (input$period == "Daily") {
       Count_Checkin_Daily
@@ -458,7 +486,15 @@ server <- function (input, output, session) {
     if (input$hired != "See All") {
       temp <- filter(temp, hiringRate == input$hired)
     }
-    temp <- filter(temp, payGroup == input$pay)
+    if (input$computepay == "minPay") {
+     temp <- filter(temp, payGroupMin == input$pay)
+    } else if (input$computepay == "maxPay") {
+      temp <- filter(temp, payGroupMax == input$pay)
+    } else if (input$computepay == "medPay") {
+      temp <- filter(temp, payGroupMed == input$pay)
+    } else {
+      temp <- filter(temp, payGroupAvg == input$pay)
+    }
     if (input$eid != "") {
       temp <- filter(temp, employerId ==  unlist(strsplit(input$eid, ",")))
     }
@@ -477,35 +513,34 @@ server <- function (input, output, session) {
       tm_bubbles(size = 0.5, col = "Num_of_Employees", title.col = "Number of\nEmployees")
   })
   
+    output$mapbox <- renderPlot({
+      
+      ggbetweenstats(
+        data = filtered_data() %>%
+          group_by(employerId),
+        x = Num_of_Employees, 
+        y = !!rlang::sym(input$y_varMAP),
+        type = input$stat_testMAP,
+        title = 'Distribution of Number of Employees with Other Factors',
+        xlab = "Number of Employees Employed by Each Employer",
+        plot.type = input$plot_typeMAP,
+        mean.ci = TRUE, 
+        pairwise.comparisons = TRUE, 
+        pairwise.display = "s",
+        p.adjust.method = "fdr",
+        messages = FALSE,
+        ggtheme = ggplot2::theme_gray())
+  })
+  
   output$aTable <- DT::renderDataTable({
-    DT::datatable(data = filtered_data(),
-                  filter = 'top',
+    DT::datatable(data = filtered_data()%>%
+                  select(1:12,14:15),
+                  filter = list(position = 'bottom', clear = FALSE, plain = TRUE),
                   rownames = FALSE,
-                  options = list(pageLength = 10,
-                    columnDefs = list(list(className = 'dt-center', targets ="_all")))
+                  options = list(pageLength = 10, autowidth = TRUE,
+                    columnDefs = list(list(className = 'dt-center', targets = "_all")))
     )
   }) 
-  
-  #############   Employer - Hiring Rate  #########################
-  
-  output$HiringRate <- renderTrelliscope({
-    
-  r <- ggplot(Count_Checkin_Weekly, aes(x= as.factor(weekNum), y= as.numeric(HiredRate))) +
-    geom_point(color='red') +
-    labs(x= 'Week', y= 'HiredRate',
-         title = 'Hiring Rate of Each Employers') +
-    ylim(0,600) +
-      facet_trelliscope(~ employerId, 
-                        nrow = 2, ncol = 3, width = 800,
-                       path = 'trellisr',
-                      self_contained = TRUE) +
-      theme(axis.title.y= element_text(angle=0), 
-           axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 0.3),
-          axis.ticks.x= element_blank(),
-         panel.background= element_blank(), 
-            axis.line= element_line(color= 'grey'))
-   print(r)
- })
   
   #############   Employer - Turnover Rate   #########################
   selected_filter <- reactive({
@@ -585,7 +620,7 @@ server <- function (input, output, session) {
     ggplot(selected_job(), aes(x= as.factor(NumEmployees.Employers), fill = haveKids)) +
       geom_bar() +
       facet_wrap(~educationLevel)+
-      ggtitle('Residents with >1 Employers') +
+      ggtitle('Employees with >1 Employers') +
       xlab("No. of Employers") +
       ylab("No. of\nResidents") +
       geom_text(stat='count', aes(label=paste0(stat(count))), position = position_stack(vjust=0.5),size=3)+
