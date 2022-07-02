@@ -1,0 +1,78 @@
+---
+title: "test"
+author: "Yeo Kim Siang"
+date: '2022-07-02'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(bslib)
+library(tidyverse)
+library(plotly)
+library(tmap)
+library(sf)
+library(trelliscopejs)
+library(shinythemes)
+library(ggplot2)
+library(gapminder)
+library(lubridate)
+library(dplyr)
+library(ggdist)
+library(reshape)
+library(reshape2)
+library(scales)
+library(hrbrthemes)
+library(ggstatsplot)
+library(RColorBrewer)
+library(sftime)
+library(ggthemes)
+library(FunnelPlotR)
+library(pheatmap)
+library(ggplotify)
+library(heatmaply)
+```
+
+```{r cars}
+participantData <- read_csv("data/facet/Participants.csv")
+incomeExpenseBalanceParticipant <- read_csv("data/participant/comprehensiveParticipantInfoFinal.csv")
+incomeExpenseBalanceParticipant$timestamp <- as.Date(incomeExpenseBalanceParticipant$timestamp, format =  "%d/%m/%Y")
+incomeExpenseBalanceTotal <- read_csv("data/overall/total.csv")
+incomeExpenseBalanceMin <- read_csv("data/overall/min.csv")
+incomeExpenseBalanceAverage <- read_csv("data/overall/average.csv")
+incomeExpenseBalanceMax <- read_csv("data/overall/max.csv")
+incomeExpenseBalanceTotal$timestamp <- as.Date(incomeExpenseBalanceTotal$timestamp, format =  "%d/%m/%Y")
+incomeExpenseBalanceMin$timestamp <- as.Date(incomeExpenseBalanceMin$timestamp, format =  "%d/%m/%Y")
+incomeExpenseBalanceAverage$timestamp <- as.Date(incomeExpenseBalanceAverage$timestamp, format =  "%d/%m/%Y")
+incomeExpenseBalanceMax$timestamp <- as.Date(incomeExpenseBalanceMax$timestamp, format =  "%d/%m/%Y")
+use_this_for_balance <- read_csv("data/heatmap/balance_heatmap_test.csv")
+use_this_for_balance$timestamp <- as.Date(use_this_for_balance$timestamp, format =  "%d/%m/%Y")
+```
+
+```{r}
+df_total <- use_this_for_balance    
+df_use_this <- subset(df_total, select = c(participantId, timestamp, balance))
+```
+
+```{r}
+balance_matrix <- acast(df_use_this, participantId~timestamp, value.var="balance", fun.aggregate=sum)
+balance_matrix<-balance_matrix[rownames(balance_matrix)!="NA",colnames(balance_matrix)!="NA"]
+p <- heatmaply(normalize(balance_matrix), 
+               scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(low="white",
+                                                                       high="black"), 
+               showticklabels = c(FALSE,FALSE), 
+               xlab="ParticipantId", 
+               ylab="Timestamp", 
+               dist_method="canberra", 
+               hclust_method="complete", 
+               dendrogram="both", 
+               # This is in the case where we have to order the dendogram
+               seriate = "OLO", 
+               )
+
+ggplotly(p)
+```
+
