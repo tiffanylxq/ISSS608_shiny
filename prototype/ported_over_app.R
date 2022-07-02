@@ -96,9 +96,6 @@ ui <- navbarPage(
              HTML("<h4>There are also instructions and guidance on how to use each tab and the sub-tabs attached to the controls."),
              HTML("For further clarification, please visit <a href='https://isss608group4.netlify.app/proposal'>here.</a></h4>"), 
              HTML("<p></p>"),
-             HTML("<h4>Lastly, we've also taken a crack at the challenge."),
-             HTML("Visit <a href=''>here</a> to check out our solution.</h4>"), 
-             HTML("<p></p>"),
              HTML("<h4>Thank you, and we hope that you have as much fun using this R Shiny App as we did creating it.</h4>"),
            )),
   navbarMenu("Business Performance",
@@ -194,7 +191,7 @@ ui <- navbarPage(
                         HTML("<h4>Select points on the right chart, to view more details.</h4>"),
                         DT::dataTableOutput("dplot10")))),
   
-  navbarMenu("Income and Expense",
+  navbarMenu("Employee",
              tabPanel("Income and Expense",
                       # Input values
                       sidebarPanel(
@@ -295,10 +292,12 @@ ui <- navbarPage(
                                                    "Monthly" = "monthly",
                                                    "Yearly" = "yearly"
                                     )),
-                        
-                        HTML("<b>Ranking</b>"),
+                        sliderInput("participantDivision", label = "Choose the number of people to view", 
+                                    min = 1, 
+                                    max = 1011, 
+                                    value = c(1, 51)),
+                        HTML("<b>Ranking Heatmap Controls</b>"),
                         checkboxInput("rankingHeatMapCheck", label = "Implement ranking", value = FALSE),
-                        
                         selectInput("ranking1", label = "Choose criteria to rank:", 
                                     choices = list("Balance" = "balance",
                                                    "Income" = "income",
@@ -309,19 +308,45 @@ ui <- navbarPage(
                                                    "Recreation Expense" = "recreationExpense",
                                                    "Rent Adjustment Expense" = "rentAdjustmentExpense"
                                     )),
-                        checkboxInput("ranking1Ascending", label = "Ascending order", value = FALSE),
-                        
-                        sliderInput("participantDivision", label = "Choose the number of people to view", 
-                                    min = 1, 
-                                    max = 1011, 
-                                    value = c(1, 51))
+                        checkboxInput("ranking1Ascending", label = "Ascending order", value = FALSE), 
+                        HTML("<b>Clustering Heatmap Controls</b>"), 
+                        checkboxInput("showXLabels", label = "Show column labels", value = FALSE), 
+                        checkboxInput("showYLabels", label = "Show row labels", value = FALSE),
+                        selectInput("distMethods", label = "Choose distance method:", 
+                                    choices = list("Euclidean" = "euclidean", 
+                                                   "Maximum" = "maximum", 
+                                                   "Manhattan" = "manhattan",
+                                                   "Canberra" = "canberra", 
+                                                   "Binary" = "binary", 
+                                                   "Minkowski" = "minkowski")),
+                        selectInput("hclustMethods", label = "Choose clustering method:", 
+                                    choices = list("Ward.D" = "ward.D", 
+                                                   "Ward.D2" = "ward.D2", 
+                                                   "Single" = "single", 
+                                                   "Complete" = "complete", 
+                                                   "Average" = "average", 
+                                                   "Mcquitty" = "mcquitty", 
+                                                   "Median" = "median", 
+                                                   "Centroid" = "centroid")), 
+                        selectInput("dendogramShow", label = "Cluster by:", 
+                                    choices = list('None' = 'none', 
+                                                   'Row' = 'row', 
+                                                   'Column' = 'column', 
+                                                   'Both' = 'both')), 
+                        selectInput("dendogramArrangement", label = "Clustering Heuristic:", 
+                                    choices = list("Optimal Leaf Ordering" = "OLO", 
+                                                   "Mean" = "mean", 
+                                                   "None" = "none", 
+                                                   "Gruvaeus and Wainer" = "GW"))
                       ),
                       
                       mainPanel(
-                        HTML("<h3>HeatMap of Residents in Engagement</h3>"),
+                        HTML("<h3>Ranked HeatMap of Residents in Engagement</h3>"),
                         plotlyOutput(outputId = "plot3ks", 
-                                     width = "100%", 
-                                     height=800),
+                                     width = "100%"),
+                        HTML("<h3>Clustered HeatMap of Residents in Engagement</h3>"),
+                        plotlyOutput(outputId = "plot3aks", 
+                                     width = "100%")
                       )
              ),  tabPanel("Participant Breakdown",
                           sidebarPanel(
@@ -1290,6 +1315,89 @@ server <- function (input, output, session) {
         theme(axis.ticks.x = element_blank(),
               axis.text.x = element_blank())
     }
+    
+    ggplotly(p)
+    
+  })
+  
+  ##### Creating a second heatmap for clustering exploration #####
+  
+  dataHeatmap2 <- reactive({
+    
+    df_total <- use_this_for_balance
+    
+    df_use_this <- subset(df_total, select = c(participantId, timestamp, balance))
+    
+    #Filtering based on the timeframe selected
+    df <- df_use_this %>% filter(
+      between(timestamp, 
+              input$heatmapDate[1], 
+              input$heatmapDate[2])
+    )
+    df_total <- df_total %>% filter(
+      between(timestamp, 
+              input$heatmapDate[1], 
+              input$heatmapDate[2])
+    )
+    
+    #Allowing for date division
+    if (input$dateDivHeatmap == "daily") {
+      df <- df
+      
+      print("daily")
+      print(df)
+    }
+    
+    if (input$dateDivHeatmap == "monthly") {
+      
+      df$timestamp <- format(as.Date(df$timestamp), "%Y-%m")
+      
+      df <- df %>%
+        group_by(timestamp, participantId) %>%
+        summarise(across(everything(), list(sum)))
+      
+      print("monthly")
+      print(df)
+    }
+    
+    if (input$dateDivHeatmap == "yearly") {
+      
+      df$timestamp <- format(as.Date(df$timestamp), "%Y")
+      
+      df <- df %>%
+        group_by(timestamp, participantId) %>%
+        summarise(across(everything(), list(sum)))
+    }
+    
+    names(df)[names(df) == 'participantId_1'] <- "participantId"
+    names(df)[names(df) == 'balance_1'] <- "balance"
+    
+    # Get the number of members if there is no ranking implemented
+    
+    list_of_participants = unique(df$participantId)
+    list_of_participants[order(list_of_participants)]
+    list_of_participants_to_use = list_of_participants[input$participantDivision[1]:input$participantDivision[2]]
+    df <- subset(df, participantId %in% list_of_participants_to_use)
+    
+    df_use_this <- df
+    
+  })
+  
+  output$plot3aks <- renderPlotly({
+    
+    balance_matrix <- acast(dataHeatmap2(), participantId~timestamp, value.var="balance", fun.aggregate=sum)
+    balance_matrix<-balance_matrix[rownames(balance_matrix)!="NA",colnames(balance_matrix)!="NA"]
+    p <- heatmaply(normalize(balance_matrix), 
+                   scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(low="white",
+                                                                           high="black"), 
+                   showticklabels = c(input$showXLabels, input$showYLabels), 
+                   xlab="ParticipantId", 
+                   ylab="Timestamp", 
+                   dist_method=input$distMethods, 
+                   hclust_method=input$hclustMethods, 
+                   dendrogram=input$dendogramShow, 
+                   # This is in the case where we have to order the dendogram
+                   seriate = input$dendogramArrangement)
     
     ggplotly(p)
     
