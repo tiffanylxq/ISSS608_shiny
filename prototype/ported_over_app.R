@@ -414,7 +414,7 @@ ui <- navbarPage(
                textInput(inputId = "input_title", label = "Map title", placeholder = "Enter text to be used as map title")),
              mainPanel(width =9,
                 HTML("<h3 style = 'text-align:center'>Interactive City Map View</h3><br>"),
-                splitLayout(cellWidths = c("45%", "55%"),
+                splitLayout(cellWidths = c("42%", "58%"),
                 HTML("<p style = 'text-align:center'> This map shows the location of each employer and <br>the number of employees employed by them. </p><br>"),
                 HTML("<p style = 'text-align:center'> This plot shows distribution of employees employed <br>by each employer with other factors. </p><br>")
                 ),
