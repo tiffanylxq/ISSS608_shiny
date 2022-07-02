@@ -297,6 +297,7 @@ ui <- navbarPage(
                                     max = 1011, 
                                     value = c(1, 1011)),
                         HTML("<b>Ranking Heatmap Controls</b>"),
+                        HTML("<p>Please note that this uses raw balance data, not normalised balance data. For that, please refer to the clustering heatmap.</p>"),
                         checkboxInput("rankingHeatMapCheck", label = "Implement ranking", value = FALSE),
                         selectInput("ranking1", label = "Choose criteria to rank:", 
                                     choices = list("Balance" = "balance",
