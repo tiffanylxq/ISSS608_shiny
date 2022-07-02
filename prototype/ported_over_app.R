@@ -103,73 +103,82 @@ ui <- navbarPage(
            )),
   navbarMenu("Business Performance",
              tabPanel("By Revenue",
-                      tabsetPanel(
-                        tabPanel("Overview",
-                                 sidebarPanel(
-                                   radioButtons(inputId = "hBusiness_type",
-                                                label = "Category",
-                                                choices = c("Pubs" = "Recreation (Social Gathering)",
-                                                            "Restaurants" = "Eating"),
-                                                selected = "Recreation (Social Gathering)")),
-                      
-                                 mainPanel(
-                                    splitLayout(
-                                      plotlyOutput("hplot1"),
-                                      gt_output("hplot2a")),
-                                    splitLayout(
-                                      plotOutput("hplot5"),
-                                      plotOutput("hplot6")
-                                      ))),
+                      sidebarPanel(
+                        conditionalPanel(condition = "input.tabselected==1",
+                                         radioButtons(inputId = "hBusiness_type",
+                                                      label = "Category",
+                                                      choices = c("Pubs" = "Recreation (Social Gathering)",
+                                                                  "Restaurants" = "Eating"),
+                                                      selected = "Recreation (Social Gathering)"),
+                                         dateRangeInput(inputId = "hDate",
+                                                        label = "Select Date Range:",
+                                                        start = "2022-03-01",
+                                                        end = "2023-05-23")),
                         
-                      tabPanel("Deep Dive",
-                               sidebarPanel(
-                                 radioButtons(inputId = "hBusiness_type",
-                                              label = "Category",
-                                              choices = c("Pubs" = "Recreation (Social Gathering)",
-                                                          "Restaurants" = "Eating"),
-                                              selected = "Recreation (Social Gathering)"),
-                                HTML("<p>Select a venueID and the available options to view the daily sales distribution across the weekdays.</p>"),
-                                selectInput(inputId = "hBusinessID",
-                                           label = "VenueID",
-                                           "venueID"),
-                                selectInput(inputId = "hPlotType",
-                                           label = "Type of plot",
-                                           choices = c("Box" = "box",
-                                                       "Violin" = "violin",
-                                                       "Box-Violin" = "boxviolin"),
-                                           selected = "boxviolin"),
-                                selectInput(inputId = "hTestType",
-                                           label = "Test Type",
-                                           choices = c("Parametric" = "p",
-                                                       "Non-parametric" = "np",
-                                                       "Robust" = "r",
-                                                       "Bayes Factor" = "bf"),
-                                           selected = "p"),
-                                selectInput(inputId = "hPairwiseDis",
-                                           label  = "Pairwise Display",
-                                           choices = c("Only significant" = "s",
-                                                       "Only non-significant" = "ns",
-                                                       "Everything" = "all"),
-                                           selected = "s"),
-                                selectInput(inputId = "hPAdjust",
-                                           label  = "P Adjust Methods",
-                                           choices = c("Holm" = "holm",
-                                                       "Hochberg" = "hochberg",
-                                                       "Hommel" = "hommel",
-                                                       "Bonferroni" = "bonferroni",
-                                                       "BH" = "BH",
-                                                       "BY" = "BY",
-                                                       "FDR" = "fdr",
-                                                       "None" = "none"),
-                                           selected = "fdr")),
-                               mainPanel(
-                                 plotOutput("hplot3"),
-                                 plotlyOutput("hplot4"))))),
+                        conditionalPanel(condition = "input.tabselected==2",
+                                         radioButtons(inputId = "hBusiness_type",
+                                                      label = "Category",
+                                                      choices = c("Pubs" = "Recreation (Social Gathering)",
+                                                                  "Restaurants" = "Eating"),
+                                                      selected = "Recreation (Social Gathering)"),
+                                         HTML("<p>Select a venueID and the available options to view the daily sales distribution across the weekdays.</p>"),
+                                         selectInput(inputId = "hBusinessID",
+                                                     label = "VenueID",
+                                                     "venueID"),
+                                         selectInput(inputId = "hPlotType",
+                                                     label = "Type of plot",
+                                                     choices = c("Box" = "box",
+                                                                 "Violin" = "violin",
+                                                                 "Box-Violin" = "boxviolin"),
+                                                     selected = "boxviolin"),
+                                         selectInput(inputId = "hTestType",
+                                                     label = "Test Type",
+                                                     choices = c("Parametric" = "p",
+                                                                 "Non-parametric" = "np",
+                                                                 "Robust" = "r",
+                                                                 "Bayes Factor" = "bf"),
+                                                     selected = "p"),
+                                         selectInput(inputId = "hPairwiseDis",
+                                                     label  = "Pairwise Display",
+                                                     choices = c("Only significant" = "s",
+                                                                 "Only non-significant" = "ns",
+                                                                 "Everything" = "all"),
+                                                     selected = "s"),
+                                         selectInput(inputId = "hPAdjust",
+                                                     label  = "P Adjust Methods",
+                                                     choices = c("Holm" = "holm",
+                                                                 "Hochberg" = "hochberg",
+                                                                 "Hommel" = "hommel",
+                                                                 "Bonferroni" = "bonferroni",
+                                                                 "BH" = "BH",
+                                                                 "BY" = "BY",
+                                                                 "FDR" = "fdr",
+                                                                 "None" = "none"),
+                                                     selected = "fdr"))),
+                      
+                      
+                      mainPanel(
+                        tabsetPanel(
+                          tabPanel("Overview", value =1,
+                                   splitLayout(
+                                     verticalLayout(
+                                     plotlyOutput("hplot1"),
+                                     HTML("<h5></h5>"),
+                                     HTML("<h4> Location of Businesses </h4>"),
+                                     tmapOutput("hplot5")),
+                                     gt_output("hplot2a")),
+                                   splitLayout(
+                                     plotOutput("hplot6"))),
+                          tabPanel("Deep Dive", value = 2,
+                                   plotOutput("hplot3"),
+                                   HTML("<h3>    </h3>"),
+                                   plotlyOutput("hplot4")),
+                          id = "tabselected"))),
              
              tabPanel("By Wages",
                       sidebarPanel(
                         selectInput(inputId = "hEduLvl",
-                                     label = "Education Level",
+                                    label = "Education Level",
                                     choices = c("Low",
                                                 "High School Or College" = "HighSchoolOrCollege",
                                                 "Bachelors",
@@ -178,11 +187,12 @@ ui <- navbarPage(
                                     selected = "Low")),
                       
                       mainPanel(
-                          splitLayout(
-                            plotlyOutput("hplot10"),
-                            plotlyOutput("hplot12")),
-                          DT::dataTableOutput("dplot10")))),
-  
+                        splitLayout(
+                          plotlyOutput("hplot10"),
+                          plotlyOutput("hplot12")),
+                        HTML("<h4>    </h4>"),
+                        HTML("<h4>Select points on the right chart, to view more details.</h4>"),
+                        DT::dataTableOutput("dplot10")))),
   
   navbarMenu("Income and Expense",
              tabPanel("Income and Expense",
@@ -1764,6 +1774,7 @@ server <- function (input, output, session) {
     req(input$hBusiness_type)
     df <- sales %>% 
       filter(purpose %in% input$hBusiness_type) %>%
+      filter(date_in >= input$hDate[1] & date_in <= input$hDate[2]) %>%
       group_by(venueId) %>% 
       summarise(total_sales = sum(daily_sales), 
                 min_daily_sales = min(daily_sales),
@@ -1786,7 +1797,9 @@ server <- function (input, output, session) {
             x = ~ venueId,
             y = ~ total_sales,
             type ="bar")  %>% 
-      layout(xaxis = list(categoryorder = "total descending"))
+      layout(xaxis = list(categoryorder = "total descending"),
+             title = 'Businesses Performance Ranking By Total Revenue')
+    
   })
   
   output$dplot1 <- DT::renderDataTable({
@@ -1811,6 +1824,7 @@ server <- function (input, output, session) {
   data2a <- reactive({
     df <- sales %>% 
       filter(venueId %in% data1()$venueId) %>% 
+      filter(date_in >= input$hDate[1] & date_in <= input$hDate[2]) %>%
       mutate(YearMonth = format(as.Date(date_in), "%Y-%m")) %>%
       group_by(venueId, YearMonth) %>% 
       summarise(monthly_sales = sum(daily_sales))%>%
@@ -1827,7 +1841,8 @@ server <- function (input, output, session) {
       group_by(venueId) %>%
       summarise("Min" = min(monthly_sales, na.rm = T),
                 "Max" = max(monthly_sales, na.rm = T),
-                "Average" = mean(monthly_sales, na.rm = T))
+                "Average" = mean(monthly_sales, na.rm = T)) %>%
+      arrange(desc(Average))
     
     sales_data <- left_join(sales_fig, spark) %>%
       gt() %>%
@@ -1855,9 +1870,7 @@ server <- function (input, output, session) {
       #filter(purpose %in% input$h2Business_type) %>%
       filter(venueId %in% input$hBusinessID) %>%
       select(venueId,wday_in,daily_sales)
-    # %>%
-    #   group_by(date_in, wday_in) %>%
-    #   summarise(daily_sales = sum(spend))
+
   })
 
   
@@ -1903,7 +1916,7 @@ server <- function (input, output, session) {
                           high = "dark blue") +
       #facet_wrap(~venueId, ncol = 1) +
       labs(x = NULL, y = NULL,
-           title = "Average Check in by weekday and time of the day") +
+           title = "Average Check-In by Weekday and Time of the Day") +
       theme(axis.ticks = element_blank(),
             axis.text.x = element_text(size = 7),
             plot.title = element_text(hjust = 0.5),
@@ -1912,27 +1925,28 @@ server <- function (input, output, session) {
     ggplotly(p)
   })
   
-  data5 <- reactive({
+  revenue <- reactive({
     df <- pubs_resto_v %>%
       filter(venueId %in% data1()$venueId) %>%
+      filter(date_in >= input$hDate[1] & date_in <= input$hDate[2]) %>%
       group_by(venueId) %>%
       summarise(total_sales = sum(daily_sales))
   })
 
-  output$hplot5 <-renderPlot({
-    tmap_mode("plot")
+  output$hplot5 <-renderTmap({
+    #tmap_mode("plot")
     tm_shape(buildings)+
       tm_polygons(col = "grey60",
                   size = 2,
                   border.col = "black",
                   border.lwd = 1) +
-      tm_shape(data5()) +
+      tm_shape(revenue()) +
       tm_bubbles(col = "total_sales",
                  palette = "Blues",
                  alpha = 0.8,
                  colorNA = "white") +
       tm_layout(bg.color="white",
-                main.title = "Total Sales by Businesses",
+                main.title = "Location of Bussinesses",
                 main.title.position = "center")
 
   })
