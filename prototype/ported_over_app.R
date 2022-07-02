@@ -295,7 +295,7 @@ ui <- navbarPage(
                         sliderInput("participantDivision", label = "Choose the number of people to view", 
                                     min = 1, 
                                     max = 1011, 
-                                    value = c(1, 51)),
+                                    value = c(1, 1011)),
                         HTML("<b>Ranking Heatmap Controls</b>"),
                         checkboxInput("rankingHeatMapCheck", label = "Implement ranking", value = FALSE),
                         selectInput("ranking1", label = "Choose criteria to rank:", 
@@ -310,6 +310,7 @@ ui <- navbarPage(
                                     )),
                         checkboxInput("ranking1Ascending", label = "Ascending order", value = FALSE), 
                         HTML("<b>Clustering Heatmap Controls</b>"), 
+                        checkboxInput("normalise", label = "Normalise data", value = TRUE), 
                         checkboxInput("showXLabels", label = "Show column labels", value = FALSE), 
                         checkboxInput("showYLabels", label = "Show row labels", value = FALSE),
                         selectInput("distMethods", label = "Choose distance method:", 
@@ -1387,17 +1388,34 @@ server <- function (input, output, session) {
     
     balance_matrix <- acast(dataHeatmap2(), participantId~timestamp, value.var="balance", fun.aggregate=sum)
     balance_matrix<-balance_matrix[rownames(balance_matrix)!="NA",colnames(balance_matrix)!="NA"]
-    p <- heatmaply(normalize(balance_matrix), 
-                   scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(low="white",
-                                                                           high="black"), 
-                   showticklabels = c(input$showXLabels, input$showYLabels), 
-                   xlab="ParticipantId", 
-                   ylab="Timestamp", 
-                   dist_method=input$distMethods, 
-                   hclust_method=input$hclustMethods, 
-                   dendrogram=input$dendogramShow, 
-                   # This is in the case where we have to order the dendogram
-                   seriate = input$dendogramArrangement)
+    
+    if (input$normalise) {
+      p <- heatmaply(normalize(balance_matrix), 
+                     scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(low="white",
+                                                                             high="black"), 
+                     showticklabels = c(input$showXLabels, input$showYLabels), 
+                     xlab="ParticipantId", 
+                     ylab="Timestamp", 
+                     dist_method=input$distMethods, 
+                     hclust_method=input$hclustMethods, 
+                     dendrogram=input$dendogramShow, 
+                     # This is in the case where we have to order the dendogram
+                     seriate = input$dendogramArrangement)
+    }
+    
+    else {
+      p <- heatmaply(balance_matrix, 
+                     scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(low="white",
+                                                                             high="black"), 
+                     showticklabels = c(input$showXLabels, input$showYLabels), 
+                     xlab="ParticipantId", 
+                     ylab="Timestamp", 
+                     dist_method=input$distMethods, 
+                     hclust_method=input$hclustMethods, 
+                     dendrogram=input$dendogramShow, 
+                     # This is in the case where we have to order the dendogram
+                     seriate = input$dendogramArrangement)
+    }
     
     ggplotly(p)
     
