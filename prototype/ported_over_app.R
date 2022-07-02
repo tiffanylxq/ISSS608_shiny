@@ -444,7 +444,7 @@ ui <- navbarPage(
                 ),
                 HTML("<p style = 'text-align:center'>If there are no corresponding data from the selected parameters, an error message will be displayed. </p><br>"),
                 textOutput("map_title"),
-                splitLayout(cellWidths = c("45%", "55%"),
+                splitLayout(cellWidths = c("42%", "58%"),
                   tmapOutput("plot1", height = 800),
                   plotOutput('mapbox', height = 800)),
              ),
