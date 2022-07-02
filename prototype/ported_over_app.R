@@ -116,7 +116,7 @@ ui <- navbarPage(
                                                         end = "2023-05-23")),
                         
                         conditionalPanel(condition = "input.tabselected==2",
-                                         radioButtons(inputId = "hBusiness_type",
+                                         radioButtons(inputId = "h2Business_type",
                                                       label = "Category",
                                                       choices = c("Pubs" = "Recreation (Social Gathering)",
                                                                   "Restaurants" = "Eating"),
@@ -1802,13 +1802,6 @@ server <- function (input, output, session) {
     
   })
   
-  output$dplot1 <- DT::renderDataTable({
-    DT::datatable(data = data1(),
-                  filter = 'top',
-                  rownames = TRUE,
-                  options = list(lengthMenu = c(5,10,20), pageLength = 5)
-    )
-  }) 
   
 
   data2 <- reactive({
@@ -1860,14 +1853,14 @@ server <- function (input, output, session) {
   })
   
   observe({
-    updateSelectInput(session, "hBusinessID", choices = sort(as.numeric(unique(data1()$venueId))))
+    x <- sales %>% filter(purpose == input$h2Business_type) 
+    updateSelectInput(session, "hBusinessID", choices = sort(as.numeric(unique(x$venueId))))
   })
   
   data3 <- reactive({
     req(input$hBusinessID)
     
     df <- data.frame(sales) %>%
-      #filter(purpose %in% input$h2Business_type) %>%
       filter(venueId %in% input$hBusinessID) %>%
       select(venueId,wday_in,daily_sales)
 
