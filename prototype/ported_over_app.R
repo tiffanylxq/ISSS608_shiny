@@ -395,8 +395,16 @@ ui <- navbarPage(
                                           "Monthly" = "yearMonth",
                                           "Weekday" = "Weekday"),
                            selected = c("weekNum")),
-               selectInput("employee", label = "Choose Number of Employees Employed by Each Employer", choices = c("See All")),
-               selectInput("job", label = "Choose Number of Jobs Offered by Each Employer", choices = c("See All")),
+               #selectInput("employee", label = "Choose Number of Employees Employed by Each Employer", choices = c("See All")),
+               sliderInput("employee", label = "Choose Number of Employees Employed by Each Employer", 
+                           min = 1, 
+                           max = 16, 
+                           value = c(1,16)),
+               #selectInput("job", label = "Choose Number of Jobs Offered by Each Employer", choices = c("See All")),
+               sliderInput("job", label = "Choose Number of Jobs Offered by Each Employer", 
+                           min = 1, 
+                           max = 8, 
+                           value = c(1,8)),
                HTML("<b>Choose Hiring Rate<sup>1</sup> of Each Employer</b>"),
                selectInput("hired", label = " ", choices = c("See All")),
                HTML("<h6><sup>1</sup>Hiring Rate = Number of Employees Employed / Number of Jobs Offered</h6>"),
@@ -539,12 +547,8 @@ server <- function (input, output, session) {
   
   filtered_data <- reactive({
     temp <- selected_period()
-    if (input$employee != "See All") {
-      temp <- filter(temp, Num_of_Employees == input$employee)
-    }
-    if (input$job != "See All") {
-      temp <- filter(temp, Num_of_Jobs == input$job)
-    }
+    temp <- temp[temp$Num_of_Employees >= input$employee[1] & temp$Num_of_Employees <= input$employee[2],]
+    temp <- temp[temp$Num_of_Jobs >= input$job[1] & temp$Num_of_Jobs <= input$job[2],]
     if (input$hired != "See All") {
       temp <- filter(temp, hiringRate == input$hired)
     }
